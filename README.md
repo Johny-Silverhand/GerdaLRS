@@ -40,20 +40,24 @@
 
 ### Передатчик (v1)
 
-По фото: **RadioMaster Ranger Micro 2.4** — JR-bay ELRS, USB-C, XT30 6–16.8 V, решётка вентилятора, RP-SMA. Это классический **SX1280**, **не** LR1121.
+Lua на аппаратуре показывает **RM Ranger Nano**. Корпус/фото могут быть подписаны как Ranger Micro (JR-bay, USB-C, XT30 6–16.8 V, вентилятор, RP-SMA) — для прошивки ориентируйтесь на **Lua-имя**.
+
+Это модуль **2.4 ГГц SX1280** (не LR1121).
 
 | | |
 | --- | --- |
-| Configurator / product_name | **RadioMaster Ranger Micro 2.4GHz TX** |
-| Lua | `RM Ranger Micro` |
-| Путь в `targets.json` | **`radiomaster.tx_2400.ranger-micro`** |
+| Configurator / product_name | **RadioMaster Ranger Nano 2.4GHz TX** |
+| Lua | `RM Ranger Nano` |
+| Путь в `targets.json` | **`radiomaster.tx_2400.ranger-nano`** |
 | Firmware env | `Unified_ESP32_2400_TX` (`_via_UART` / `_via_WIFI`) |
-| Layout | `TX/Radiomaster Ranger Micro.json` |
-| prior_target_name | `RadioMaster_Ranger_Micro_2400_TX` |
+| Layout | `TX/Radiomaster Ranger Micro.json` + overlay `power_values` [-18,-15,-12,-8,-5,0] |
+| prior_target_name | `RadioMaster_Ranger_Nano_2400_TX` |
 
-Рядом в дереве есть `radiomaster.tx_2400.ranger-nano` (`RadioMaster Ranger Nano 2.4GHz TX` / Lua `RM Ranger Nano`) — тот же layout, другой overlay мощности. Если Lua на радио пишет **RM Ranger Nano**, берите nano, а не micro.
+Не выбирайте `radiomaster.tx_2400.ranger-micro` (`RM Ranger Micro`), если Lua пишет Nano.
 
-**Совместимость пары v1:** стандартные режимы ELRS 2.4 работают между SX1280 TX и LR1121 RX. Режимы только для LR1121 (DK500 / K1000 и т.п.) требуют LR1121 на **обоих** концах — для Ranger Micro это **вне v1**.
+**Совместимость пары v1:** стандартные режимы ELRS 2.4 работают между SX1280 TX и LR1121 RX. Режимы только для LR1121 (DK500 / K1000 и т.п.) требуют LR1121 на **обоих** концах — для Ranger Nano это **вне v1**.
+
+Пример настроек Lua (только документация, не дефолт прошивки): Packet Rate 50 Hz, Telem Std 1:16, Switch Wide, Link Normal, Model Match Off, TX Power 1000 mW. LQ 0/50 на том скрине = нет линка.
 
 ## Дорожная карта
 
@@ -82,16 +86,16 @@
 -DLOCK_ON_FIRST_CONNECTION
 ```
 
-`ISM_2400` нужен Ranger Micro (SX1280). `FCC_915` (или другой 900-домен) нужен, чтобы сборка LR1121 RX прошла `#error` в `targets.h`; hop 2.4 всё равно берётся из `domainsDualBand[]` / Web UI `gerda-2g4`.
+`ISM_2400` нужен Ranger Nano (SX1280). `FCC_915` (или другой 900-домен) нужен, чтобы сборка LR1121 RX прошла `#error` в `targets.h`; hop 2.4 всё равно берётся из `domainsDualBand[]` / Web UI `gerda-2g4`.
 
-**TX — RadioMaster Ranger Micro 2.4:**
+**TX — RadioMaster Ranger Nano 2.4:**
 
 ```bash
 cd src
 pio run -e Unified_ESP32_2400_TX_via_UART
 ```
 
-В списке конфигурации: `RadioMaster Ranger Micro 2.4GHz TX` / путь `radiomaster.tx_2400.ranger-micro`.
+В списке конфигурации: `RadioMaster Ranger Nano 2.4GHz TX` / путь `radiomaster.tx_2400.ranger-nano`.
 
 **RX — FlyFish 9624R 2.4:**
 
@@ -110,9 +114,9 @@ pio run -e Unified_ESP32C3_LR1121_RX_via_UART
 
 1. Установите [ExpressLRS Configurator](https://github.com/ExpressLRS/ExpressLRS-Configurator/releases/).
 2. Source: **Local**, укажите этот репозиторий.
-3. **TX:** Device **RadioMaster Ranger Micro 2.4GHz TX** (`radiomaster.tx_2400.ranger-micro`). Radio SX1280 / Unified ESP32 2400 TX. Если Lua пишет `RM Ranger Nano` — устройство **RadioMaster Ranger Nano 2.4GHz TX**.
+3. **TX:** Device **RadioMaster Ranger Nano 2.4GHz TX** (`radiomaster.tx_2400.ranger-nano`). Radio SX1280 / Unified ESP32 2400 TX. Корпус может быть подписан Micro — смотрите Lua.
 4. **RX:** Radio **LR1121**, MCU **ESP32-C3**. Device **Generic C3 LR1121 2.4/900 RX** или **FlyFish 9624R 2.4**.
-5. Не выбирайте HappyModel SX128x RX для FlyFish и не берите LR1121 TX для этого Ranger.
+5. Не выбирайте HappyModel SX128x RX для FlyFish и не берите `ranger-micro`, если Lua пишет Nano.
 
 ## Радио и закон
 
@@ -137,7 +141,7 @@ GerdaLRS is a GPL-3.0 ExpressLRS derivative (upstream `7684347ee697b3fa4318f99a0
 **v1 hardware pair**
 
 - **RX:** FlyFish 9624R 2.4 (ESP32-C3 + LR1121). Path: `generic.rx_dual.c3-plain` or unverified alias `flyfish.rx_dual.9624r`. Env: `Unified_ESP32C3_LR1121_RX_via_UART`. Never flash SX128x HappyModel RX binaries.
-- **TX:** RadioMaster Ranger Micro 2.4 (photo: JR-bay SX1280, USB-C, XT30, fan, RP-SMA — not LR1121). Path: `radiomaster.tx_2400.ranger-micro`. Env: `Unified_ESP32_2400_TX_via_UART`. If Lua shows `RM Ranger Nano`, use `radiomaster.tx_2400.ranger-nano`. Standard 2.4 ELRS rates interoperate with the LR1121 RX; DK500/K1000 are out of scope for this TX.
+- **TX:** RadioMaster Ranger Nano 2.4 (Lua `RM Ranger Nano`; casing may say Micro). Path: `radiomaster.tx_2400.ranger-nano`. Env: `Unified_ESP32_2400_TX_via_UART`. SX1280, not LR1121. Standard 2.4 ELRS rates interoperate with the LR1121 RX; DK500/K1000 are out of scope for this TX.
 
 Non-ISM frequencies (including ~2640 MHz) are the operator’s legal responsibility. 2.4 matching is ~2.4–2.5 GHz; 2640 MHz will likely reduce range. Default RF remains ISM 2.4; both ends must match if you select CUSTOM_2640 in the Web UI.
 
@@ -145,7 +149,7 @@ Non-ISM frequencies (including ~2640 MHz) are the operator’s legal responsibil
 
 - [x] Русские вкладки Web UI + `i18n-ru.js`.
 - [x] Runtime ISM / CUSTOM_2640 в options (`gerda-2g4`).
-- [x] TX: RadioMaster Ranger Micro 2.4 (`radiomaster.tx_2400.ranger-micro`; SX1280).
+- [x] TX: RadioMaster Ranger Nano 2.4 (`radiomaster.tx_2400.ranger-nano`; Lua name, casing may say Micro).
 - [x] Native-тесты hop-таблицы CUSTOM_2640.
 - [ ] Доперевести длинные help-тексты PWM/Hardware pins.
 - [ ] Снять `hardware.json` с живого FlyFish 9624R.

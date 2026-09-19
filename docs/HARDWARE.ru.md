@@ -58,28 +58,33 @@ flyfish.rx_dual.9624r
 
 Похожий серийный продукт с тем же layout/firmware: `radiomaster.rx_dual.xr2` (RadioMaster XR2 2G4 RX). Это **не** доказательство совместимости FlyFish.
 
-## TX: RadioMaster Ranger Micro 2.4 (v1)
+## TX: RadioMaster Ranger Nano 2.4 (v1)
 
-По фото пользователя: JR-bay модуль **RadioMaster Ranger Micro 2.4 GHz ELRS** — USB-C, XT30 6–16.8 V, решётка вентилятора, RP-SMA. Это классический Ranger Micro на **SX1280**, не LR1121.
+Lua на радио: **RM Ranger Nano**. На пластике/фото модуль может быть подписан как Ranger Micro (JR-bay, USB-C, XT30 6–16.8 V, вентилятор, RP-SMA). Для прошивки используйте **Lua-имя**.
+
+Радио: **SX1280** (не LR1121). Семья Ranger 2.4.
 
 В снимке `src/hardware/targets.json` (ExpressLRS/targets `bda4c92`) таргет **есть**:
 
 ```
-radiomaster.tx_2400.ranger-micro
-  product_name : RadioMaster Ranger Micro 2.4GHz TX
-  lua_name     : RM Ranger Micro
+radiomaster.tx_2400.ranger-nano
+  product_name : RadioMaster Ranger Nano 2.4GHz TX
+  lua_name     : RM Ranger Nano
   platform     : esp32
   firmware     : Unified_ESP32_2400_TX
   layout_file  : TX/Radiomaster Ranger Micro.json
+  overlay      : power_values [-18,-15,-12,-8,-5,0]
   upload       : uart, wifi
-  prior_target_name : RadioMaster_Ranger_Micro_2400_TX
+  prior_target_name : RadioMaster_Ranger_Nano_2400_TX
 ```
 
-Configurator (Local): Device **RadioMaster Ranger Micro 2.4GHz TX**. PlatformIO: `Unified_ESP32_2400_TX_via_UART` / `_via_WIFI`.
+Configurator (Local): Device **RadioMaster Ranger Nano 2.4GHz TX**. PlatformIO: `Unified_ESP32_2400_TX_via_UART` / `_via_WIFI`.
 
-Рядом: `radiomaster.tx_2400.ranger-nano` (`RM Ranger Nano`) — тот же `Radiomaster Ranger Micro.json` + overlay `power_values` [-18,-15,-12,-8,-5,0]. Если Lua показывает **RM Ranger Nano**, а не Micro, прошивайте nano.
+Не путать с `radiomaster.tx_2400.ranger-micro` (Lua `RM Ranger Micro`) — тот же layout без nano overlay мощности.
 
-**Совместимость с FlyFish LR1121 RX:** стандартные режимы ELRS 2.4 (не LR1121-only) работают cross-chip. DK500 / K1000 и прочие режимы только для LR1121 требуют LR1121 на **обоих** концах — для Ranger Micro это **вне v1**.
+**Совместимость с FlyFish LR1121 RX:** стандартные режимы ELRS 2.4 работают cross-chip. DK500 / K1000 и прочие режимы только для LR1121 требуют LR1121 на **обоих** концах — для Ranger Nano это **вне v1**.
+
+Пример Lua (только документация, не дефолт прошивки): Packet Rate 50 Hz, Telem Std 1:16, Switch Wide, Link Normal, Model Match Off, TX Power 1000 mW. LQ 0/50 на скрине = нет линка в тот момент.
 
 ## RF: 2.4 vs 2640
 

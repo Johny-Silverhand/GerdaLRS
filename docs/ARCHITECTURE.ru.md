@@ -24,7 +24,7 @@ GerdaLRS (этот репозиторий)
 
 OTA, UID, CRC, FHSS, unified binary+layout — как в ExpressLRS. GerdaLRS добавляет тонкий слой в `src/lib/GERDA/`, options `gerda-2g4`, русский Web UI и документацию.
 
-**Пара v1:** RX FlyFish 9624R 2.4 (ESP32-C3 + LR1121) + TX RadioMaster Ranger Micro 2.4 (SX1280, `radiomaster.tx_2400.ranger-micro`). Стандартные режимы ELRS 2.4 работают cross-chip; DK500/K1000 — вне v1.
+**Пара v1:** RX FlyFish 9624R 2.4 (ESP32-C3 + LR1121) + TX RadioMaster Ranger Nano 2.4 (SX1280, Lua `RM Ranger Nano`, `radiomaster.tx_2400.ranger-nano`; корпус может быть подписан Micro). Стандартные режимы ELRS 2.4 работают cross-chip; DK500/K1000 — вне v1.
 
 ## 2. Русский Web UI
 
@@ -71,7 +71,7 @@ TX и RX обязаны совпадать, иначе линка не буде�
 
 ### RF caveat
 
-LR1121 на 2.4-платах (FlyFish 9624R) и SX1280 Ranger Micro рассчитаны на **~2.4–2.5 ГГц**. На ~2640 МГц КСВ и мощность на антенне почти наверняка хуже. Это не «бесплатная дальность».
+LR1121 на 2.4-платах (FlyFish 9624R) и SX1280 Ranger Nano рассчитаны на **~2.4–2.5 ГГц**. На ~2640 МГц КСВ и мощность на антенне почти наверняка хуже. Это не «бесплатная дальность».
 
 **Закон:** частоты вне ISM — ответственность пользователя. В репозитории нет обещания легальности CUSTOM_2640.
 
@@ -110,7 +110,7 @@ Stubs: `gerda_kdf_session_key`, `gerda_hmac_tag`, `gerda_replay_check` всег�
 ## 6. Потоки данных
 
 ```
-TX handset CRSF (Ranger Micro SX1280)
+TX handset CRSF (Ranger Nano SX1280)
   → OTA pack (+ future HMAC)
   → FHSS hop (ISM2G4 или CUST2640)
   → эфир 2.4
@@ -127,7 +127,7 @@ Web UI (Wi-Fi AP GerdaLRS RX/TX)
 
 - [x] i18n: словарь + русские вкладки Модель/Опции/Wi‑Fi/Обновление.
 - [x] Runtime ISM vs 2640 в options; синхронизация TX/RX (оба конца вручную).
-- [x] TX: RadioMaster Ranger Micro 2.4 (`radiomaster.tx_2400.ranger-micro`).
+- [x] TX: RadioMaster Ranger Nano 2.4 (`radiomaster.tx_2400.ranger-nano`).
 - [x] Хук UID + stubs KDF/HMAC/anti-replay (не крипто на эфире).
 - [ ] Доперевести длинные help-тексты PWM / Hardware pins.
 - [ ] Снять hardware.json с FlyFish 9624R и сравнить с `Generic C3 LR1121.json`.
