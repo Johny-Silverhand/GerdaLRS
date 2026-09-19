@@ -1,0 +1,27 @@
+GerdaLRS
+========
+
+GerdaLRS is a modified version of ExpressLRS.
+
+  Upstream project : ExpressLRS
+  Upstream authors : ExpressLRS LLC and contributors
+  Upstream URL     : https://github.com/ExpressLRS/ExpressLRS
+  Upstream commit  : 7684347ee697b3fa4318f99a02b6ae6f5d703307
+                     ("Pass HeadTracking Pan/Tilt/Roll back to EdgeTX", 2025-04-26)
+  License          : GNU General Public License v3.0 (see LICENSE)
+
+Hardware target definitions under src/hardware/ are a vendored snapshot of
+https://github.com/ExpressLRS/targets at commit
+bda4c92e8a78459b4d3510f94f04dbdcbd0a5576. See src/hardware/ORIGIN.txt.
+
+This distribution is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by the
+Free Software Foundation, either version 3 of the License, or (at your
+option) any later version.
+
+ExpressLRS, ExpressLRS LLC, and related names remain trademarks / marks of
+their respective owners. GerdaLRS is an independent derivative and is not
+affiliated with, endorsed by, or supported by ExpressLRS LLC.
+
+GerdaLRS modifications (documentation, branding, planned-module stubs, and
+the unverified FlyFish 9624R target alias) are likewise released under GPL-3.0.

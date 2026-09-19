@@ -1,0 +1,9 @@
+{
+  "name": "GERDA",
+  "version": "0.1.0",
+  "description": "GerdaLRS planned-module stubs (i18n, domain, security, link). Not a complete radio stack.",
+  "keywords": "expresslrs, gerdalrs",
+  "license": "GPL-3.0-or-later",
+  "frameworks": "*",
+  "platforms": "*"
+}

@@ -1,0 +1,14 @@
+blank_issues_enabled: true
+contact_links:
+  - name: GerdaLRS issues
+    url: https://github.com/Johny-Silverhand/GerdaLRS/issues
+    about: Bugs and GerdaLRS-specific work (RU UI, CUSTOM_2640, security, FlyFish)
+  - name: ExpressLRS Feature Requests
+    url: https://github.com/ExpressLRS/ExpressLRS/discussions/new
+    about: Upstream ExpressLRS ideas (this fork is not ExpressLRS LLC)
+  - name: ExpressLRS Discord
+    url: https://discord.gg/dS6ReFY
+    about: Upstream community support
+  - name: ExpressLRS website
+    url: https://www.expresslrs.org/
+    about: Stock ExpressLRS documentation
