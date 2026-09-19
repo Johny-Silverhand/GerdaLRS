@@ -1378,6 +1378,17 @@ static void setupBindingFromConfig()
 }
 
 
+void gerda_link_apply_tx_config(void)
+{
+  uint8_t rate_enum = 0;
+  uint8_t tlm = 0;
+  if (!gerda_profile_rate_tlm(gerda_profile, &rate_enum, &tlm)) {
+    return;
+  }
+  config.SetRate(enumRatetoIndex((expresslrs_RFrates_e)rate_enum));
+  config.SetTlm(tlm);
+}
+
 static void cyclePower()
 {
   // Only change power if we are running normally

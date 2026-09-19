@@ -1,9 +1,12 @@
 #include "gerda_link.h"
-#include "common.h"
 
-#if defined(TARGET_TX)
-#include "config.h"
-#endif
+// Rate/tlm numbers must match expresslrs_RFrates_e / expresslrs_tlm_ratio_e
+// in include/common.h. Kept numeric so this lib is not pulled into native
+// tests via PlatformIO LDF on config.h / radio headers.
+#define GERDA_RATE_2G4_50HZ  21  // RATE_LORA_2G4_50HZ
+#define GERDA_RATE_2G4_500HZ 29  // RATE_LORA_2G4_500HZ
+#define GERDA_TLM_1_64       3   // TLM_RATIO_1_64
+#define GERDA_TLM_1_16       5   // TLM_RATIO_1_16
 
 uint8_t gerda_profile = GERDA_PROFILE_BALANCE;
 
@@ -26,13 +29,13 @@ int gerda_profile_rate_tlm(uint8_t profile, uint8_t *rate_enum, uint8_t *tlm)
         return 0;
     }
     if (profile == GERDA_PROFILE_RANGE) {
-        *rate_enum = (uint8_t)RATE_LORA_2G4_50HZ;
-        *tlm = (uint8_t)TLM_RATIO_1_16;
+        *rate_enum = GERDA_RATE_2G4_50HZ;
+        *tlm = GERDA_TLM_1_16;
         return 1;
     }
     if (profile == GERDA_PROFILE_SPEED) {
-        *rate_enum = (uint8_t)RATE_LORA_2G4_500HZ;
-        *tlm = (uint8_t)TLM_RATIO_1_64;
+        *rate_enum = GERDA_RATE_2G4_500HZ;
+        *tlm = GERDA_TLM_1_64;
         return 1;
     }
     return 0;
@@ -74,16 +77,3 @@ int gerda_should_defer_msp(uint8_t uplink_lq)
     uint8_t thresh = (gerda_profile == GERDA_PROFILE_RANGE) ? 70 : 40;
     return uplink_lq < thresh;
 }
-
-#if defined(TARGET_TX)
-void gerda_link_apply_tx_config(void)
-{
-    uint8_t rate_enum = 0;
-    uint8_t tlm = 0;
-    if (!gerda_profile_rate_tlm(gerda_profile, &rate_enum, &tlm)) {
-        return;
-    }
-    config.SetRate(enumRatetoIndex((expresslrs_RFrates_e)rate_enum));
-    config.SetTlm(tlm);
-}
-#endif

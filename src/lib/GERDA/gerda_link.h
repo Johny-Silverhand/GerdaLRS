@@ -69,5 +69,6 @@ int gerda_should_defer_msp(uint8_t uplink_lq);
 
 #if defined(TARGET_TX)
 // After TxConfig::Load(), before ChangeRadioParams(). No-op for Баланс.
+// Implemented in tx_main.cpp so GERDA lib does not LDF-pull CONFIG on native tests.
 void gerda_link_apply_tx_config(void);
 #endif

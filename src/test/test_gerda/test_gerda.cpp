@@ -68,7 +68,7 @@ void test_hkdf_rfc5869_case1_32(void)
     uint8_t out[32];
     uint8_t exp[32];
     TEST_ASSERT_EQUAL(GERDA_SEC_OK, gerda_hkdf_sha256(ikm, 22, salt, 13, info, 10, out, 32));
-    bytes_from_hex("3cb25f25faacd57a9043fbc819d2e1c9b2c05c7942a304beb455d373ca3af908", exp, 32);
+    bytes_from_hex("3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf", exp, 32);
     TEST_ASSERT_EQUAL_UINT8_ARRAY(exp, out, 32);
 }
 
