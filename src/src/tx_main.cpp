@@ -1,5 +1,6 @@
 #include "rxtx_common.h"
 #include "gerda_security.h"
+#include "gerda_link.h"
 
 #include "CRSFHandset.h"
 #include "dynpower.h"
@@ -170,6 +171,11 @@ bool ICACHE_RAM_ATTR ProcessTLMpacket(SX12xxDriverCommon::rx_status const status
   OTA_Packet_s * const otaPktPtr = (OTA_Packet_s * const)Radio.RXdataBuffer;
   OTA_Packet_s * const otaPktPtrSecond = (OTA_Packet_s * const)Radio.RXdataBufferSecond;
 
+  const uint8_t gerdaPlen = OtaIsFullRes ? (uint8_t)OTA8_PACKET_SIZE : (uint8_t)OTA4_PACKET_SIZE;
+  gerda_ota_apply_mac((uint8_t *)otaPktPtr, gerdaPlen,
+                      gerda_ota_nonce_for_packet((uint8_t *)otaPktPtr, gerdaPlen, OtaNonce),
+                      InBindingMode);
+
   if (!OtaValidatePacketCrc(otaPktPtr))
   {
     DBGLN("TLM crc error");
@@ -182,6 +188,9 @@ bool ICACHE_RAM_ATTR ProcessTLMpacket(SX12xxDriverCommon::rx_status const status
   Radio.CheckForSecondPacket();
   if (Radio.hasSecondRadioGotData)
   {
+    gerda_ota_apply_mac((uint8_t *)otaPktPtrSecond, gerdaPlen,
+                        gerda_ota_nonce_for_packet((uint8_t *)otaPktPtrSecond, gerdaPlen, OtaNonce),
+                        InBindingMode);
     if (!OtaValidatePacketCrc(otaPktPtrSecond))
     {
       Radio.hasSecondRadioGotData = false;
@@ -614,7 +623,9 @@ void ICACHE_RAM_ATTR SendRCdataToRF()
     {
       OtaPackAirportData(&otaPkt, &apInputBuffer);
     }
-    else if ((NextPacketIsMspData && MspSender.IsActive()) || dontSendChannelData)
+    else if ((NextPacketIsMspData && MspSender.IsActive()
+              && !gerda_should_defer_msp(CRSF::LinkStatistics.uplink_Link_quality))
+             || dontSendChannelData)
     {
       otaPkt.std.type = PACKET_TYPE_DATA;
       if (OtaIsFullRes)
@@ -654,6 +665,12 @@ void ICACHE_RAM_ATTR SendRCdataToRF()
 
   ///// Next, Calculate the CRC and put it into the buffer /////
   OtaGeneratePacketCrc(&otaPkt);
+  {
+    const uint8_t gerdaPlen = OtaIsFullRes ? (uint8_t)OTA8_PACKET_SIZE : (uint8_t)OTA4_PACKET_SIZE;
+    gerda_ota_apply_mac((uint8_t *)&otaPkt, gerdaPlen,
+                        gerda_ota_nonce_for_packet((uint8_t *)&otaPkt, gerdaPlen, OtaNonce),
+                        InBindingMode);
+  }
 
   SX12XX_Radio_Number_t transmittingRadio = Radio.GetLastSuccessfulPacketRadio();
 
@@ -1402,6 +1419,7 @@ void setup()
     eeprom.Begin(); // Init the eeprom
     config.SetStorageProvider(&eeprom); // Pass pointer to the Config class for access to storage
     config.Load(); // Load the stored values from eeprom
+    gerda_link_apply_tx_config(); // Дальность/Скорость override Lua rate/tlm; Баланс = no-op
 
     Radio.currFreq = FHSSgetInitialFreq(); //set frequency first or an error will occur!!!
     #if defined(RADIO_SX127X)

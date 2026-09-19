@@ -22,5 +22,9 @@
 #define GERDA_DOMAIN_NAME "ISM2G4"
 #endif
 
-// Localization is in src/html/. Security / MCS stubs live in src/lib/GERDA/.
-// Security stubs are hooked after UID setup but do not alter OTA packets.
+// Localization is in src/html/. Crypto + profiles live in src/lib/GERDA/.
+// Gerda Secure Link is OFF by default (stock ELRS OTA). Uncomment to make ON
+// the factory default before the first options.json exists:
+//   -DGERDA_SECURE_LINK_DEFAULT
+// Runtime toggle is options.json "gerda-secure" / Web UI «Защищённый линк Gerda».
+// When ON, both ends must be Gerda with the same bind-phrase UID. See docs/SECURITY.ru.md.

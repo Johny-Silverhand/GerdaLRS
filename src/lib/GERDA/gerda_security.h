@@ -2,87 +2,75 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <string.h>
+#include <stdbool.h>
 
-// Stronger link security than stock bind-phrase UID (design only).
+// Gerda Secure Link primitives + OTA MAC (XOR into ELRS CRC field).
+// Default OFF. See docs/SECURITY.ru.md.
 //
-// Stock ExpressLRS (this tree):
-//   - Binding phrase -> MD5 -> 6-byte UID
-//   - UID mixes into FHSS seed / IQ invert / sync fields
-//   - Sync packets check only part of the UID
-//   - OTA payload is not authenticated; a matching UID is enough to inject
-//
-// Planned GerdaLRS (NOT implemented — do not claim the link is "secure"):
-//   1. Post-bind session key via KDF
-//        session_key = HKDF-SHA256(ikm=UID || bind_nonce || "GerdaLRS v1",
-//                                  salt=commit_id, info="ota-session")
-//      UID remains the pairing secret; session_key is ephemeral per bind.
-//   2. Packet auth / HMAC
-//        truncated HMAC (e.g. HMAC-SHA256 -> 32–64 bits) over
-//        {nonce, packet_type, payload} using session_key.
-//      Trade-off: airtime vs forgery resistance. 32 bits is a start, not a
-//      substitute for a full AEAD.
-//   3. Anti-replay
-//        monotonic packet counter / OtaNonce window; reject duplicates and
-//        old counters after a bind.
-//
-// Stubs: gerda_kdf_session_key / gerda_hmac_tag / gerda_replay_check always
-// return GERDA_SEC_NOT_IMPLEMENTED. gerda_on_uid_ready() is called from
-// rx_main / tx_main after UID setup and does NOT alter OTA packets.
-//
-// TODOs (next PRs, in order):
-//   [ ] Specify exact OTA field layout without breaking CRSF packet size
-//   [ ] Implement HKDF on ESP32 (mbedTLS) and a portable fallback
-//   [ ] Add HMAC verify on RX before channel unpack
-//   [ ] Counter window + bind-time nonce exchange
-//   [ ] Do NOT ship a "secure mode" UI toggle until 1–4 land
+// Stock ELRS (Secure OFF): unkeyed CRC14/16, partial UID on SYNC.
+// Secure ON: HKDF-SHA256 session key from UID (+ optional phrase),
+// truncated HMAC XOR'd into the CRC field (0 extra airtime), anti-replay window.
+// Bind mode does not apply the MAC (stock bind MSP).
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 enum gerda_security_status {
-    GERDA_SEC_STUB = 0,
-    GERDA_SEC_NOT_IMPLEMENTED = -1,
+    GERDA_SEC_OK = 0,
+    GERDA_SEC_BAD_ARG = -1,
+    GERDA_SEC_REPLAY = -2,
+    GERDA_SEC_NO_KEY = -3,
 };
 
-static inline int gerda_kdf_session_key(const uint8_t *uid, size_t uid_len,
-                                        const uint8_t *bind_nonce, size_t nonce_len,
-                                        uint8_t *out_key, size_t out_len)
-{
-    (void)uid;
-    (void)uid_len;
-    (void)bind_nonce;
-    (void)nonce_len;
-    if (out_key && out_len) {
-        memset(out_key, 0, out_len);
-    }
-    return GERDA_SEC_NOT_IMPLEMENTED;
-}
+#define GERDA_SESSION_KEY_LEN 16
+#define GERDA_REPLAY_WINDOW 32
 
-static inline int gerda_hmac_tag(const uint8_t *session_key, size_t key_len,
-                                 const uint8_t *msg, size_t msg_len,
-                                 uint8_t *out_tag, size_t tag_len)
-{
-    (void)session_key;
-    (void)key_len;
-    (void)msg;
-    (void)msg_len;
-    if (out_tag && tag_len) {
-        memset(out_tag, 0, tag_len);
-    }
-    return GERDA_SEC_NOT_IMPLEMENTED;
-}
+// 0 = OFF (stock ELRS interoperable). 1 = ON (Gerda↔Gerda only).
+extern uint8_t gerda_secure_link;
 
-static inline int gerda_replay_check(uint32_t counter)
-{
-    (void)counter;
-    return GERDA_SEC_NOT_IMPLEMENTED;
-}
+void gerda_sha256(const uint8_t *data, size_t len, uint8_t out[32]);
+
+int gerda_hmac_sha256(const uint8_t *key, size_t key_len,
+                      const uint8_t *msg, size_t msg_len,
+                      uint8_t out[32]);
+
+// HKDF-SHA256 (RFC 5869). out_len up to 32 for v1.
+int gerda_hkdf_sha256(const uint8_t *ikm, size_t ikm_len,
+                      const uint8_t *salt, size_t salt_len,
+                      const uint8_t *info, size_t info_len,
+                      uint8_t *out, size_t out_len);
+
+// session_key = HKDF(ikm=UID||phrase, salt="GerdaLRS-ota-v1", info="ota-mac-v1", 16)
+int gerda_kdf_session_key(const uint8_t *uid, size_t uid_len,
+                          const uint8_t *phrase, size_t phrase_len,
+                          uint8_t *out_key, size_t out_len);
+
+int gerda_hmac_tag(const uint8_t *session_key, size_t key_len,
+                   const uint8_t *msg, size_t msg_len,
+                   uint8_t *out_tag, size_t tag_len);
+
+void gerda_replay_reset(uint8_t nonce);
+int gerda_replay_accept(uint8_t nonce);
+
+int gerda_ct_equal(const uint8_t *a, const uint8_t *b, size_t n);
+
+bool gerda_key_ready(void);
+bool gerda_secure_active(void);
+
+// XOR truncated HMAC into CRC field (in-place). Involutive: call twice to undo.
+// pkt_len 8 = OTA4 (CRC14 in crcHigh/crcLow), 13 = OTA8 (CRC16 LE at end).
+void gerda_ota_mac_xor(uint8_t *pkt, uint8_t pkt_len, uint8_t nonce);
+
+// SYNC uses pkt[2] (OTA_Sync_s.nonce); other types use local_nonce.
+uint8_t gerda_ota_nonce_for_packet(const uint8_t *pkt, uint8_t pkt_len, uint8_t local_nonce);
+
+// No-op in bind mode or when Secure is OFF / no key.
+void gerda_ota_apply_mac(uint8_t *pkt, uint8_t pkt_len, uint8_t nonce, int in_bind);
+
+// After UID is known. Derives session key from UID (phrase already folded into UID).
+void gerda_on_uid_ready(const uint8_t *uid, size_t uid_len);
 
 #ifdef __cplusplus
 }
 #endif
-
-// C++ hook after UID is known (bind / boot). Does not alter OTA packets.
-void gerda_on_uid_ready(const uint8_t *uid, size_t uid_len);

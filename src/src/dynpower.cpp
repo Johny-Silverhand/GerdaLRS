@@ -1,4 +1,5 @@
 #include <dynpower.h>
+#include "gerda_link.h"
 
 #if defined(TARGET_TX)
 #include <handset.h>
@@ -135,7 +136,7 @@ void DynamicPower_Update(uint32_t now)
   int32_t lq_diff = lq_avg - lq_current;
   dynpower_mavg_lq.add(lq_current);
   // if LQ drops quickly (DYNPOWER_LQ_BOOST_THRESH_DIFF) or critically low below DYNPOWER_LQ_BOOST_THRESH_MIN, immediately boost to the configured max power.
-  if (lq_diff >= DYNPOWER_LQ_BOOST_THRESH_DIFF || lq_current <= DYNPOWER_LQ_BOOST_THRESH_MIN)
+  if (lq_diff >= DYNPOWER_LQ_BOOST_THRESH_DIFF || lq_current <= gerda_dynpower_lq_boost_min())
   {
       DynamicPower_SetToConfigPower();
       return;
@@ -160,7 +161,7 @@ void DynamicPower_Update(uint32_t now)
         DBGLN("+power (rssi)");
         POWERMGNT::incPower();
       }
-      else if (avg_rssi > rssi_dec_threshold && lq_avg >= DYNPOWER_LQ_THRESH_DN)
+      else if (avg_rssi > rssi_dec_threshold && lq_avg >= gerda_dynpower_lq_thresh_dn())
       {
         DBGVLN("-power (rssi)"); // Verbose because this spams when idle
         POWERMGNT::decPower();
@@ -172,7 +173,7 @@ void DynamicPower_Update(uint32_t now)
     // =============  SNR-based power increment ==============
     // Decrease the power if SNR above threshold and LQ is good
     // Increase the power for each (X) SNR below the threshold
-    if (snrScaled >= ExpressLRS_currAirRate_RFperfParams->DynpowerSnrThreshDn && lq_avg >= DYNPOWER_LQ_THRESH_DN)
+    if (snrScaled >= ExpressLRS_currAirRate_RFperfParams->DynpowerSnrThreshDn && lq_avg >= gerda_dynpower_lq_thresh_dn())
     {
       DBGVLN("-power (snr)"); // Verbose because this spams when idle
       POWERMGNT::decPower();

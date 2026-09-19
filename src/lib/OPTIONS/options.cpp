@@ -1,6 +1,8 @@
 #include "targets.h"
 #include "options.h"
 #include "gerda_domain.h"
+#include "gerda_security.h"
+#include "gerda_link.h"
 
 #include "logging.h"
 
@@ -94,6 +96,9 @@ void saveOptions(Stream &stream, bool customised)
     doc["is-airport"] = firmwareOptions.is_airport;
     doc["domain"] = firmwareOptions.domain;
     doc["gerda-2g4"] = gerda_2g4_band_index();
+    doc["gerda-secure"] = gerda_secure_link ? 1 : 0;
+    doc["gerda-profile"] = (gerda_profile == GERDA_PROFILE_RANGE || gerda_profile == GERDA_PROFILE_SPEED)
+        ? gerda_profile : 0;
     doc["customised"] = customised;
     doc["flash-discriminator"] = firmwareOptions.flash_discriminator;
 
@@ -210,6 +215,17 @@ static void options_LoadFromFlashOrFile(EspFlashStream &strmFlash)
     if (!doc["gerda-2g4"].isNull()) {
         gerda_2g4_band = (doc["gerda-2g4"].as<int>() == 1) ? 1 : 0;
     }
+    if (!doc["gerda-secure"].isNull()) {
+        if (doc["gerda-secure"].is<bool>()) {
+            gerda_secure_link = doc["gerda-secure"].as<bool>() ? 1 : 0;
+        } else {
+            gerda_secure_link = doc["gerda-secure"].as<int>() ? 1 : 0;
+        }
+    }
+    if (!doc["gerda-profile"].isNull()) {
+        int p = doc["gerda-profile"].as<int>();
+        gerda_profile = (p == GERDA_PROFILE_RANGE || p == GERDA_PROFILE_SPEED) ? (uint8_t)p : 0;
+    }
     firmwareOptions.flash_discriminator = doc["flash-discriminator"] | 0U;
 
     builtinOptions.clear();
@@ -225,6 +241,9 @@ void options_SetTrueDefaults()
     // The Regulatory Domain is retained, as there is no sensible default
     doc["domain"] = firmwareOptions.domain;
     doc["gerda-2g4"] = gerda_2g4_band_index();
+    doc["gerda-secure"] = gerda_secure_link ? 1 : 0;
+    doc["gerda-profile"] = (gerda_profile == GERDA_PROFILE_RANGE || gerda_profile == GERDA_PROFILE_SPEED)
+        ? gerda_profile : 0;
     doc["flash-discriminator"] = firmwareOptions.flash_discriminator;
 
     File options = SPIFFS.open("/options.json", "w");

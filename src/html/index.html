@@ -83,6 +83,28 @@
 							После сохранения нужна перезагрузка.
 						</p>
 @@end
+						<div class="mui-checkbox">
+							<input id="gerda-secure" name="gerda-secure" type="checkbox"/>
+							<label for="gerda-secure" data-i18n="Gerda Secure Link">Защищённый линк Gerda</label>
+						</div>
+						<p style="font-size:13px;line-height:1.4;">
+							По умолчанию <b>выкл</b> — поведение как у стокового ExpressLRS (совместимость с чужим TX/RX).
+							Если включить, HMAC кладётся в поле CRC (0 доп. байт в эфире); оба конца должны быть GerdaLRS с одной bind-phrase.
+							Сток ELRS с этой опцией <b>не</b> соединится. Режим bind остаётся стоковым.
+						</p>
+						<div class="mui-select">
+							<select id="gerda-profile" name="gerda-profile">
+								<option value="0" data-i18n="Profile Balance">Баланс (как в Lua)</option>
+								<option value="1" data-i18n="Profile Range">Дальность (50 Гц, телеметрия 1:16)</option>
+								<option value="2" data-i18n="Profile Speed">Скорость (500 Гц, телеметрия 1:64)</option>
+							</select>
+							<label for="gerda-profile" data-i18n="Flight profile">Профиль полёта</label>
+						</div>
+						<p style="font-size:13px;line-height:1.4;">
+							<b>Баланс</b> не трогает Packet Rate / Telem Ratio из Lua.
+							<b>Дальность</b> и <b>Скорость</b> на TX при загрузке выставляют рекомендованные rate/telem (стандартный LoRa 2.4; не FLRC и не DK500).
+							После загрузки Lua всё ещё может переопределить rate до следующей перезагрузки.
+						</p>
 						<div class="mui-textfield">
 							<input size='3' id='wifi-on-interval' name='wifi-on-interval' type='text' placeholder="Выкл"/>
 							<label for="wifi-on-interval" data-i18n="WiFi auto-on interval">Интервал авто-включения Wi‑Fi, сек (пусто = выкл)</label>

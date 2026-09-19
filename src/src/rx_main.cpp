@@ -578,9 +578,18 @@ bool ICACHE_RAM_ATTR HandleSendTelemetryResponse()
     }
 
     OtaGeneratePacketCrc(&otaPkt);
-    if (sendGeminiBuffer)
     {
-        OtaGeneratePacketCrc(&otaPktGemini);
+        const uint8_t gerdaPlen = OtaIsFullRes ? (uint8_t)OTA8_PACKET_SIZE : (uint8_t)OTA4_PACKET_SIZE;
+        gerda_ota_apply_mac((uint8_t *)&otaPkt, gerdaPlen,
+                            gerda_ota_nonce_for_packet((uint8_t *)&otaPkt, gerdaPlen, OtaNonce),
+                            InBindingMode);
+        if (sendGeminiBuffer)
+        {
+            OtaGeneratePacketCrc(&otaPktGemini);
+            gerda_ota_apply_mac((uint8_t *)&otaPktGemini, gerdaPlen,
+                                gerda_ota_nonce_for_packet((uint8_t *)&otaPktGemini, gerdaPlen, OtaNonce),
+                                InBindingMode);
+        }
     }
 
     SX12XX_Radio_Number_t transmittingRadio;
@@ -1175,6 +1184,10 @@ bool ICACHE_RAM_ATTR ProcessRFPacket(SX12xxDriverCommon::rx_status const status)
 
     OTA_Packet_s * const otaPktPtr = (OTA_Packet_s * const)Radio.RXdataBuffer;
     OTA_Packet_s * const otaPktPtrSecond = (OTA_Packet_s * const)Radio.RXdataBufferSecond;
+    const uint8_t gerdaPlen = OtaIsFullRes ? (uint8_t)OTA8_PACKET_SIZE : (uint8_t)OTA4_PACKET_SIZE;
+    gerda_ota_apply_mac((uint8_t *)otaPktPtr, gerdaPlen,
+                        gerda_ota_nonce_for_packet((uint8_t *)otaPktPtr, gerdaPlen, OtaNonce),
+                        InBindingMode);
 
     if (!OtaValidatePacketCrc(otaPktPtr))
     {
@@ -1183,6 +1196,18 @@ bool ICACHE_RAM_ATTR ProcessRFPacket(SX12xxDriverCommon::rx_status const status)
             lastPacketCrcError = true;
         #endif
         return false;
+    }
+
+    if (gerda_secure_active() && !InBindingMode && otaPktPtr->std.type == PACKET_TYPE_RCDATA)
+    {
+        if (gerda_replay_accept(OtaNonce) != GERDA_SEC_OK)
+        {
+            DBGVLN("Gerda replay");
+            #if defined(DEBUG_RX_SCOREBOARD)
+                lastPacketCrcError = true;
+            #endif
+            return false;
+        }
     }
 
     PFDloop.extEvent(beginProcessing + PACKET_TO_TOCK_SLACK);
@@ -1195,6 +1220,9 @@ bool ICACHE_RAM_ATTR ProcessRFPacket(SX12xxDriverCommon::rx_status const status)
     Radio.CheckForSecondPacket();
     if (Radio.hasSecondRadioGotData)
     {
+        gerda_ota_apply_mac((uint8_t *)otaPktPtrSecond, gerdaPlen,
+                            gerda_ota_nonce_for_packet((uint8_t *)otaPktPtrSecond, gerdaPlen, OtaNonce),
+                            InBindingMode);
         if (!OtaValidatePacketCrc(otaPktPtrSecond))
         {
             Radio.hasSecondRadioGotData = false;

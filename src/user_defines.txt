@@ -38,6 +38,11 @@
 # See docs/ARCHITECTURE.ru.md.
 #-DGERDA_DOMAIN_CUSTOM_2640
 
+# Gerda Secure Link factory default (still OFF unless uncommented). Runtime
+# override: Web UI «Защищённый линк Gerda» / options.json "gerda-secure".
+# When ON, stock ELRS will not connect. Bind mode stays stock either way.
+#-DGERDA_SECURE_LINK_DEFAULT
+
 ### PERFORMANCE OPTIONS: ###
 
 -DLOCK_ON_FIRST_CONNECTION

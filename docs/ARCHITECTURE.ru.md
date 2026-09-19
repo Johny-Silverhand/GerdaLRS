@@ -7,10 +7,10 @@
 | Модуль | Файлы | Статус |
 | --- | --- | --- |
 | Конфиг / флаги | `src/include/gerda_config.h`, `src/user_defines.txt` | есть |
-| Локализация | `src/lib/GERDA/gerda_i18n.h`, `src/html/i18n-ru.js`, `src/html/index.html` | RU вкладки + таблица строк |
+| Локализация | `src/lib/GERDA/gerda_i18n.h`, `src/html/i18n-ru.js`, `src/html/index.html` | RU вкладки + Secure/профили |
 | Домены | `src/lib/GERDA/gerda_domain.h`, `src/lib/FHSS/FHSS.cpp`, `src/lib/OPTIONS/options.cpp` | runtime ISM / CUSTOM_2640 |
-| Безопасность | `src/lib/GERDA/gerda_security.h`, `gerda_security.cpp` | stubs + хук UID |
-| Дальность/скорость | `src/lib/GERDA/gerda_link.h` | только дизайн |
+| Безопасность | `src/lib/GERDA/gerda_security.*`, `gerda_sha256.*`, `docs/SECURITY.ru.md` | примитивы + XOR-MAC в TX/RX, default OFF |
+| Дальность/скорость | `src/lib/GERDA/gerda_link.*`, Web UI `gerda-profile` | профили + MSP defer + dynpower RANGE |
 | Железо | `docs/HARDWARE.ru.md`, `src/hardware/targets.json` | пара v1 |
 
 ## 1. База
@@ -22,7 +22,7 @@ GerdaLRS (этот репозиторий)
                   + алиас flyfish.rx_dual.9624r
 ```
 
-OTA, UID, CRC, FHSS, unified binary+layout — как в ExpressLRS. GerdaLRS добавляет тонкий слой в `src/lib/GERDA/`, options `gerda-2g4`, русский Web UI и документацию.
+OTA, UID, CRC, FHSS, unified binary+layout — как в ExpressLRS. GerdaLRS добавляет слой в `src/lib/GERDA/`, options `gerda-2g4` / `gerda-secure` / `gerda-profile`, русский Web UI и документацию.
 
 **Пара v1:** RX FlyFish 9624R 2.4 (ESP32-C3 + LR1121) + TX RadioMaster Ranger Nano 2.4 (SX1280, Lua `RM Ranger Nano`, `radiomaster.tx_2400.ranger-nano`; корпус может быть подписан Micro). Стандартные режимы ELRS 2.4 работают cross-chip; DK500/K1000 — вне v1.
 
@@ -75,52 +75,62 @@ LR1121 на 2.4-платах (FlyFish 9624R) и SX1280 Ranger Nano рассчи�
 
 **Закон:** частоты вне ISM — ответственность пользователя. В репозитории нет обещания легальности CUSTOM_2640.
 
-## 4. Безопасность линка (дизайн + stubs)
+## 4. Безопасность линка (реализовано за флагом)
 
-Сток ELRS: bind-phrase → MD5 → 6-байтовый UID; UID участвует в FHSS seed / IQ / полях sync; полезная нагрузка **не** аутентифицируется.
+Полная схема: [`docs/SECURITY.ru.md`](SECURITY.ru.md).
 
-Цель GerdaLRS — не «обфускация частоты», а криптография поверх UID:
+Сток ELRS: bind-phrase → MD5 → 6-байтовый UID; UID в FHSS / IQ / CRC init; payload **не** аутентифицируется.
+
+Gerda Secure Link (options `gerda-secure`, default **0**):
 
 ```
-bind phrase
-    → UID (как сейчас, для совместимости пары)
-    → HKDF-SHA256(UID || bind_nonce || "GerdaLRS v1")
-    → session_key
-    → truncated HMAC над {nonce, type, payload}
-    → окно anti-replay по счётчику
+UID (phrase уже внутри MD5)
+    → HKDF-SHA256(ikm=UID, salt="GerdaLRS-ota-v1", info="ota-mac-v1", 16)
+    → HMAC-SHA256, обрезка 14/16 бит, XOR в поле CRC
+    → на RX: XOR обратно, сток CRC, anti-replay окно 32 по OtaNonce
+    → fail = drop, без takeover
 ```
 
-Stubs: `gerda_kdf_session_key`, `gerda_hmac_tag`, `gerda_replay_check` всегда возвращают `GERDA_SEC_NOT_IMPLEMENTED`.
+Bind-режим MAC не применяет. Secure OFF — байты эфира как у ELRS.
 
-Хук `gerda_on_uid_ready(UID, UID_LEN)` вызывается из `rx_main` / `tx_main` после `OtaUpdateCrcInitFromUid()`. Он **не** меняет пакеты OTA. Пока HMAC не в OTA, **нельзя** писать в UI «защищённый линк».
+Хуки: `gerda_ota_apply_mac` сразу после `OtaGeneratePacketCrc` / сразу до `OtaValidatePacketCrc` в `tx_main.cpp` / `rx_main.cpp`. Формат OTA не меняется (не второй радиостек).
 
-Порядок внедрения: спека размера пакета → native-тесты → RX verify → TX tag → UI. Ломать CRSF/airtime без расчёта нельзя.
+Native-тесты: `src/test/test_gerda/` (SHA-256, RFC 4231 HMAC, RFC 5869 HKDF, KDF, replay, XOR roundtrip).
 
-## 5. Дальность и скорость (план)
+## 5. Дальность и скорость
 
-| Фича | Идея | Риск |
+Пара v1: Ranger Nano **SX1280** + FlyFish **LR1121**. Только стандартные LoRa 2.4 (50 / 150 / 250 / 333 / 500 Гц и т.д.). DK500/K1000 — вне скоупа этого TX.
+
+| Фича | Статус | Где |
 | --- | --- | --- |
-| Adaptive MCS | Менять rate/SF по LQ/SNR с гистерезисом | рассинхрон режимов TX/RX |
-| Interference-aware FHSS | Реже ходить на шумные каналы | слишком узкий hop-set упрощает перехват |
-| Приоритет управления | ARM / flight mode важнее телеметрии при плохом LQ | голод телеметрии |
-| Межпакетный FEC | Чётность на N пакетов | воздух, латентность |
+| Профиль Баланс | есть | не трогает Lua Packet Rate / Telem |
+| Профиль Дальность | есть | TX boot: `RATE_LORA_2G4_50HZ` + `TLM_RATIO_1_16`; dynpower LQ boost min 70 (сток 50), power-down только при LQ≥99 (сток 95) |
+| Профиль Скорость | есть | TX boot: `RATE_LORA_2G4_500HZ` + `TLM_RATIO_1_64` (не FLRC) |
+| Приоритет RC vs MSP | есть | `tx_main.cpp` `SendRCdataToRF`: `gerda_should_defer_msp(uplink_LQ)` |
+| Telem backoff (слот TLM) | **нет** | `ExpressLRS_currTlmDenom` синхронизируется SYNC (`tx_main.cpp` `GenerateSyncPacketData` / `rx_main.cpp` `ProcessRfPacket_SYNC`); менять mid-flight без syncspam — не чистый хук. TODO Phase 4 |
+| Adaptive MCS | **нет** | риск рассинхрона SX1280↔LR1121 |
+| IA-FHSS | **нет** | `src/lib/FHSS/FHSS.cpp` — seeded permutation, нет RSSI-per-hop. Нельзя честно «обходить помехи» без нового хука в Radio ISR. Phase 4 |
+| Межпакетный FEC | **нет** | airtime |
+| CUSTOM_2640 | опция | **не** улучшает дальность на этом фронтенде |
 
-`gerda_link_feature_enabled()` сейчас всегда 0.
+Lua-facing: отдельного пункта «Профиль Герда» в EdgeTX Lua нет (размер скрипта). Профиль живёт в Web UI; Lua по-прежнему показывает Packet Rate / Telem Ratio. После выбора Дальность/Скорость перезагрузка TX записывает rate/tlm в EEPROM-конфиг модели — дальше Lua их видит.
+
+`gerda_link_feature_enabled(GERDA_LINK_CC_PRIORITY)` = 1; IA_FHSS / MCS / FEC = 0.
 
 ## 6. Потоки данных
 
 ```
 TX handset CRSF (Ranger Nano SX1280)
-  → OTA pack (+ future HMAC)
+  → OTA pack + (если Secure ON) HMAC XOR в CRC
   → FHSS hop (ISM2G4 или CUST2640)
   → эфир 2.4
 RX FlyFish LR1121
   → hop
-  → HMAC/replay (future)
+  → (если Secure ON) XOR + CRC + replay window
   → CRSF/SBUS к FC
 Web UI (Wi-Fi AP GerdaLRS RX/TX)
   → i18n RU
-  → gerda-2g4 + options
+  → gerda-2g4 + gerda-secure + gerda-profile
 ```
 
 ## 7. Чеклист следующих шагов
@@ -128,10 +138,10 @@ Web UI (Wi-Fi AP GerdaLRS RX/TX)
 - [x] i18n: словарь + русские вкладки Модель/Опции/Wi‑Fi/Обновление.
 - [x] Runtime ISM vs 2640 в options; синхронизация TX/RX (оба конца вручную).
 - [x] TX: RadioMaster Ranger Nano 2.4 (`radiomaster.tx_2400.ranger-nano`).
-- [x] Хук UID + stubs KDF/HMAC/anti-replay (не крипто на эфире).
+- [x] Secure Link: спека, SHA-256/HMAC/HKDF, XOR-MAC в TX/RX, native-тесты, UI-флаг default OFF.
+- [x] Профили Баланс/Дальность/Скорость + MSP defer + dynpower RANGE.
 - [ ] Доперевести длинные help-тексты PWM / Hardware pins.
 - [ ] Снять hardware.json с FlyFish 9624R и сравнить с `Generic C3 LR1121.json`.
 - [ ] Измерить RSSI/дальность на 2640 со штатной антенной (ожидается хуже).
-- [ ] Спека session key / HMAC / nonce; затем код, не наоборот.
-- [ ] Adaptive MCS только после таблицы поддерживаемых rates для SX1280+LR1121.
-- [ ] Не включать CUSTOM_2640 в дефолтный `user_defines.txt`.
+- [ ] Phase 4: epoch anti-replay, IA-FHSS (нужен RSSI-per-hop), adaptive MCS для пары SX1280+LR1121.
+- [ ] Не включать CUSTOM_2640 и Secure в дефолтный `user_defines.txt`.

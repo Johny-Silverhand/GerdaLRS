@@ -1,7 +1,6 @@
 #pragma once
 
-// GerdaLRS planned modules (stubs only).
-// Based on ExpressLRS; this header does not change RF or bind behaviour.
+// GerdaLRS modules on top of ExpressLRS. Default flags keep stock RF and bind.
 
 #include "gerda_i18n.h"
 #include "gerda_domain.h"
