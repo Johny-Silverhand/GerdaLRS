@@ -6,3 +6,4 @@
 #include "gerda_domain.h"
 #include "gerda_security.h"
 #include "gerda_link.h"
+#include "gerda_fhss.h"

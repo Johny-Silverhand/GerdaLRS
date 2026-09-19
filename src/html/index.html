@@ -92,6 +92,16 @@
 							Если включить, HMAC кладётся в поле CRC (0 доп. байт в эфире); оба конца должны быть GerdaLRS с одной bind-phrase.
 							Сток ELRS с этой опцией <b>не</b> соединится. Режим bind остаётся стоковым.
 						</p>
+						<div class="mui-checkbox">
+							<input id="gerda-fhss" name="gerda-fhss" type="checkbox"/>
+							<label for="gerda-fhss" data-i18n="Smart FHSS">Умный FHSS</label>
+						</div>
+						<p style="font-size:13px;line-height:1.4;">
+							По умолчанию <b>выкл</b> — hop-таблица как у ExpressLRS (одинаковая на TX и RX).
+							Если включить, приёмник ведёт гистограмму RSSI/CRC по каналам и <b>не переписывает</b> последовательность:
+							шумные каналы не портят LQ и не крутят AFC, но радио всё равно на них ходит (иначе линк разъедется).
+							Это не когнитивный FHSS с общим чёрным списком по эфиру.
+						</p>
 						<div class="mui-select">
 							<select id="gerda-profile" name="gerda-profile">
 								<option value="0" data-i18n="Profile Balance">Баланс (как в Lua)</option>

@@ -43,6 +43,10 @@
 # When ON, stock ELRS will not connect. Bind mode stays stock either way.
 #-DGERDA_SECURE_LINK_DEFAULT
 
+# Smart FHSS factory default (OFF). Runtime: Web UI «Умный FHSS» /
+# options.json "gerda-fhss". Does not change the hop sequence.
+#-DGERDA_SMART_FHSS_DEFAULT
+
 ### PERFORMANCE OPTIONS: ###
 
 -DLOCK_ON_FIRST_CONNECTION

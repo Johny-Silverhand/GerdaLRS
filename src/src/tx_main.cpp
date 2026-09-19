@@ -1,6 +1,7 @@
 #include "rxtx_common.h"
 #include "gerda_security.h"
 #include "gerda_link.h"
+#include "gerda_fhss.h"
 
 #include "CRSFHandset.h"
 #include "dynpower.h"
@@ -66,6 +67,21 @@ unsigned long rebootTime = 0;
 extern bool webserverPreventAutoStart;
 //// MSP Data Handling ///////
 bool NextPacketIsMspData = false;  // if true the next packet will contain the msp data
+
+static uint8_t gerda_hop_ch(void)
+{
+    if (FHSSusePrimaryFreqBand) {
+        return FHSSsequence[FHSSptr];
+    }
+    return FHSSsequence_DualBand[FHSSptr];
+}
+
+static void gerda_fhss_bind_table(void)
+{
+    uint8_t n = (uint8_t)FHSSgetChannelCount();
+    uint8_t sync = FHSSusePrimaryFreqBand ? (uint8_t)sync_channel : (uint8_t)sync_channel_DualBand;
+    gerda_fhss_reset(n, sync);
+}
 char backpackVersion[32] = "";
 uint8_t packageIndexRadio1 = 0xFF;
 uint8_t packageIndexRadio2 = 0xFF;
@@ -162,9 +178,11 @@ void ICACHE_RAM_ATTR LinkStatsFromOta(OTA_LinkStats_s * const ls)
 
 bool ICACHE_RAM_ATTR ProcessTLMpacket(SX12xxDriverCommon::rx_status const status)
 {
+  const uint8_t hopCh = gerda_hop_ch();
   if (status != SX12xxDriverCommon::SX12XX_RX_OK)
   {
     DBGLN("TLM HW CRC error");
+    gerda_fhss_record(hopCh, 0, 0);
     return false;
   }
 
@@ -179,11 +197,13 @@ bool ICACHE_RAM_ATTR ProcessTLMpacket(SX12xxDriverCommon::rx_status const status
   if (!OtaValidatePacketCrc(otaPktPtr))
   {
     DBGLN("TLM crc error");
+    gerda_fhss_record(hopCh, 0, 0);
     return false;
   }
 
   LastTLMpacketRecvMillis = millis();
   LQCalc.add();
+  gerda_fhss_record(hopCh, 1, Radio.LastPacketRSSI);
 
   Radio.CheckForSecondPacket();
   if (Radio.hasSecondRadioGotData)
@@ -481,6 +501,7 @@ void SetRFLinkRate(uint8_t index) // Set speed of RF link
 
   FHSSusePrimaryFreqBand = !(ModParams->radio_type == RADIO_TYPE_LR1121_LORA_2G4) && !(ModParams->radio_type == RADIO_TYPE_LR1121_GFSK_2G4);
   FHSSuseDualBand = ModParams->radio_type == RADIO_TYPE_LR1121_LORA_DUAL;
+  gerda_fhss_bind_table();
 
   Radio.Config(ModParams->bw, ModParams->sf, ModParams->cr, FHSSgetInitialFreq(),
                ModParams->PreambleLen, invertIQ, ModParams->PayloadLength, ModParams->interval
@@ -766,6 +787,10 @@ void ICACHE_RAM_ATTR timerCallback()
 #else
     CRSF::LinkStatistics.downlink_Link_quality = LQCalc.getLQ();
 #endif
+    if (!LQCalc.currentIsSet() && gerda_fhss_neutralize_miss(gerda_hop_ch()))
+    {
+      LQCalc.add();
+    }
     LQCalc.inc();
     return;
   }
@@ -1419,6 +1444,7 @@ void setup()
 
     setupBindingFromConfig();
     FHSSrandomiseFHSSsequence(uidMacSeedGet());
+    gerda_fhss_bind_table();
 
     Radio.RXdoneCallback = &RXdoneISR;
     Radio.TXdoneCallback = &TXdoneISR;

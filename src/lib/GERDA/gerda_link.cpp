@@ -14,9 +14,9 @@ int gerda_link_feature_enabled(enum gerda_link_feature feature)
 {
     switch (feature) {
     case GERDA_LINK_CC_PRIORITY:
+    case GERDA_LINK_IA_FHSS:
         return 1;
     case GERDA_LINK_ADAPTIVE_MCS:
-    case GERDA_LINK_IA_FHSS:
     case GERDA_LINK_INTERPACKET_FEC:
     default:
         return 0;

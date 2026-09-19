@@ -17,8 +17,8 @@
 //     makes power-down require LQ 99 instead of 95. Stock path unchanged on Баланс.
 //
 // Not implemented (Phase 4 — no fake hooks):
-//   - Interference-aware FHSS: FHSS.cpp has no per-hop RSSI histogram; hop set is
-//     a seeded permutation. Do not shrink it. See docs/ARCHITECTURE.ru.md.
+//   - Interference-aware FHSS: histogram + RX/TX soft denylist (same hop
+//     order). Synced skip-map is not on the air. See docs/FHSS.ru.md.
 //   - Adaptive MCS / rate switching from live LQ (would desync SX1280↔LR1121)
 //   - Inter-packet FEC
 //   - Telem-slot steal (ExpressLRS_currTlmDenom is synced via SYNC; changing it

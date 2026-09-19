@@ -28,3 +28,6 @@
 //   -DGERDA_SECURE_LINK_DEFAULT
 // Runtime toggle is options.json "gerda-secure" / Web UI «Защищённый линк Gerda».
 // When ON, both ends must be Gerda with the same bind-phrase UID. See docs/SECURITY.ru.md.
+//
+// Smart FHSS factory default OFF. Runtime: options.json "gerda-fhss" /
+// Web UI «Умный FHSS». Does not rewrite the hop sequence. See docs/FHSS.ru.md.

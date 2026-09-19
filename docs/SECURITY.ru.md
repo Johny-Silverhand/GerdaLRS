@@ -99,11 +99,15 @@ Drop. Нет failsafe-перехвата, нет смены UID, нет отве
 
 ## Честно vs ELRS
 
-Сейчас (Secure OFF): как ELRS.  
-Secure ON: Gerda не примет чужой ELRS и наоборот. Подделка CRC без ключа не проходит. Это не «военный» линк.
+Secure OFF: как ELRS (bind, Wi‑Fi, CRSF, MQTT не трогаем).  
+Secure ON: Gerda не примет чужой ELRS и наоборот. Подделка CRC без ключа не проходит. Это не AEAD и не «военный» линк.
 
-## Phase 4
+Тесты (`src/test/test_gerda/`): SHA-256, RFC 4231 HMAC (в т.ч. 50-байтовый вектор), RFC 5869 HKDF, KDF/UID mismatch, окно replay включая край 31/32, XOR roundtrip, порча payload, ON TX / OFF RX и наоборот (CRC поле не совпадает со стоком).
 
-- Epoch в `OTA_Sync_s` / `free[4]` OTA8 против wrap-replay.
-- Более длинный MAC, если появится запас airtime.
-- Не включать Secure в UI как «готово к соревнованиям с AES».
+MAC остаётся в поле CRC (0 доп. байт). 14/16 бит — компромисс airtime; длиннее тег без лишнего байта в OTA4 нельзя. Не называем это AES.
+
+## Ограничения, которые остаются
+
+- Wrap-replay: `OtaNonce` 8 бит, полный круг 256 пакетов. Epoch в `OTA_Sync_s` / `free[4]` OTA8 **не** внедрён: лишний рассинхрон epoch хуже, чем окно 32 против боковой инъекции.
+- Session = HKDF(UID). Phrase на RX после bind нет; секрет не сильнее 48 бит UID.
+- Bind / Wi‑Fi AP / CRSF — сток, MAC в bind не ставится.

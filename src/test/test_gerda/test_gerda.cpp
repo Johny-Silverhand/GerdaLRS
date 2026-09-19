@@ -5,6 +5,7 @@
 #include "gerda_security.h"
 #include "gerda_sha256.h"
 #include "gerda_link.h"
+#include "gerda_fhss.h"
 #include "common.h"
 
 static void bytes_from_hex(const char *hex, uint8_t *out, size_t n)
@@ -186,7 +187,7 @@ void test_flight_profiles(void)
     TEST_ASSERT_EQUAL(0, gerda_should_defer_msp(20));
     TEST_ASSERT_EQUAL_UINT8(50, gerda_dynpower_lq_boost_min());
 
-    TEST_ASSERT_EQUAL(0, gerda_link_feature_enabled(GERDA_LINK_IA_FHSS));
+    TEST_ASSERT_EQUAL(1, gerda_link_feature_enabled(GERDA_LINK_IA_FHSS));
     TEST_ASSERT_EQUAL(0, gerda_link_feature_enabled(GERDA_LINK_ADAPTIVE_MCS));
     TEST_ASSERT_EQUAL(1, gerda_link_feature_enabled(GERDA_LINK_CC_PRIORITY));
     TEST_ASSERT_EQUAL(0, gerda_link_feature_enabled(GERDA_LINK_INTERPACKET_FEC));
@@ -197,6 +198,156 @@ void test_flight_profiles(void)
 void setUp(void) {}
 void tearDown(void) {}
 
+void test_hmac_rfc4231_case3(void)
+{
+    uint8_t key[20];
+    uint8_t msg[50];
+    memset(key, 0xaa, 20);
+    memset(msg, 0xdd, 50);
+    uint8_t out[32];
+    uint8_t exp[32];
+    TEST_ASSERT_EQUAL(GERDA_SEC_OK, gerda_hmac_sha256(key, 20, msg, 50, out));
+    bytes_from_hex("773ea91e36800e46854db8ebd09181a72959098b3ef8c122d9635514ced565fe", exp, 32);
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(exp, out, 32);
+}
+
+void test_replay_window_edges(void)
+{
+    gerda_replay_reset(100);
+    TEST_ASSERT_EQUAL(GERDA_SEC_OK, gerda_replay_accept(69));  // 31 back
+    TEST_ASSERT_EQUAL(GERDA_SEC_REPLAY, gerda_replay_accept(68)); // 32 back
+    gerda_replay_reset(0);
+    TEST_ASSERT_EQUAL(GERDA_SEC_OK, gerda_replay_accept(1));
+    TEST_ASSERT_EQUAL(GERDA_SEC_REPLAY, gerda_replay_accept(0));
+    gerda_replay_reset(255);
+    TEST_ASSERT_EQUAL(GERDA_SEC_OK, gerda_replay_accept(0)); // wrap forward
+    TEST_ASSERT_EQUAL(GERDA_SEC_REPLAY, gerda_replay_accept(255));
+}
+
+void test_mac_payload_tamper_and_uid_mismatch(void)
+{
+    uint8_t uidA[6] = {1, 2, 3, 4, 5, 6};
+    uint8_t uidB[6] = {1, 2, 3, 4, 5, 7};
+    uint8_t pkt[8];
+    uint8_t tagged[8];
+    memset(pkt, 0x11, 8);
+    pkt[0] = 0x00;
+    pkt[7] = 0xAB;
+
+    gerda_secure_link = 1;
+    gerda_on_uid_ready(uidA, 6);
+    memcpy(tagged, pkt, 8);
+    gerda_ota_mac_xor(tagged, 8, 7);
+
+    uint8_t tampered[8];
+    memcpy(tampered, tagged, 8);
+    tampered[3] ^= 0xFF;
+    gerda_ota_mac_xor(tampered, 8, 7); // RX with same key, tampered body
+    TEST_ASSERT_FALSE(gerda_ct_equal(pkt, tampered, 8));
+
+    uint8_t wrong[8];
+    memcpy(wrong, tagged, 8);
+    gerda_on_uid_ready(uidB, 6);
+    gerda_ota_mac_xor(wrong, 8, 7); // RX with other UID session
+    TEST_ASSERT_FALSE(gerda_ct_equal(pkt, wrong, 8));
+
+    gerda_on_uid_ready(uidA, 6);
+    gerda_ota_mac_xor(tagged, 8, 7);
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(pkt, tagged, 8);
+    gerda_secure_link = 0;
+}
+
+void test_secure_on_off_interop(void)
+{
+    uint8_t uid[6] = {9, 9, 9, 9, 9, 9};
+    uint8_t stock[8];
+    uint8_t air[8];
+    memset(stock, 0x22, 8);
+    stock[0] = 0x00;
+    stock[7] = 0x55;
+    gerda_on_uid_ready(uid, 6);
+
+    // OFF↔OFF: no XOR
+    gerda_secure_link = 0;
+    memcpy(air, stock, 8);
+    gerda_ota_apply_mac(air, 8, 3, 0);
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(stock, air, 8);
+
+    // ON TX, OFF RX: air CRC field is tagged; OFF RX leaves it tagged → not stock CRC
+    gerda_secure_link = 1;
+    memcpy(air, stock, 8);
+    gerda_ota_apply_mac(air, 8, 3, 0);
+    gerda_secure_link = 0;
+    uint8_t off_rx[8];
+    memcpy(off_rx, air, 8);
+    gerda_ota_apply_mac(off_rx, 8, 3, 0);
+    TEST_ASSERT_FALSE(gerda_ct_equal(stock, off_rx, 8));
+
+    // OFF TX, ON RX: ON RX XORs stock packet → CRC field changes, would fail Validate
+    gerda_secure_link = 1;
+    memcpy(air, stock, 8);
+    gerda_ota_apply_mac(air, 8, 3, 0);
+    TEST_ASSERT_FALSE(gerda_ct_equal(stock, air, 8));
+
+    gerda_secure_link = 0;
+}
+
+void test_smart_fhss_histogram_and_diversity(void)
+{
+    TEST_ASSERT_EQUAL_UINT8(0, gerda_fhss_max_denylist(4));
+    TEST_ASSERT_EQUAL_UINT8(2, gerda_fhss_max_denylist(8));
+    TEST_ASSERT_EQUAL_UINT8(20, gerda_fhss_max_denylist(80));
+
+    gerda_smart_fhss = 0;
+    gerda_fhss_reset(80, 40);
+    for (int i = 0; i < 20; i++) {
+        gerda_fhss_record(3, 0, 0);
+    }
+    TEST_ASSERT_EQUAL(0, gerda_fhss_is_denylisted(3)); // flag off
+    TEST_ASSERT_EQUAL(0, gerda_fhss_neutralize_miss(3));
+
+    gerda_smart_fhss = 1;
+    gerda_fhss_reset(80, 40);
+    for (uint8_t ch = 0; ch < 80; ch++) {
+        for (int i = 0; i < 10; i++) {
+            gerda_fhss_record(ch, 1, -80);
+        }
+    }
+    for (int i = 0; i < 20; i++) {
+        gerda_fhss_record(3, 0, 0);
+        gerda_fhss_record(5, 0, 0);
+        gerda_fhss_record(40, 0, 0); // sync — must never denylist
+    }
+    TEST_ASSERT_EQUAL(1, gerda_fhss_is_denylisted(3));
+    TEST_ASSERT_EQUAL(1, gerda_fhss_is_denylisted(5));
+    TEST_ASSERT_EQUAL(0, gerda_fhss_is_denylisted(40));
+    TEST_ASSERT_EQUAL(1, gerda_fhss_skip_freq_corr(3));
+    TEST_ASSERT_TRUE(gerda_fhss_denylist_count() >= 2);
+    TEST_ASSERT_TRUE(gerda_fhss_denylist_count() <= 20);
+
+    uint8_t blob[20];
+    uint8_t n = gerda_fhss_export_denylist(blob, 20);
+    TEST_ASSERT_TRUE(n >= 2);
+    gerda_fhss_reset(80, 40);
+    gerda_smart_fhss = 1;
+    gerda_fhss_import_denylist(blob, n);
+    TEST_ASSERT_EQUAL(1, gerda_fhss_is_denylisted(3));
+    TEST_ASSERT_EQUAL(0, gerda_fhss_is_denylisted(40));
+
+    gerda_fhss_reset(8, 4);
+    gerda_smart_fhss = 1;
+    for (uint8_t ch = 0; ch < 8; ch++) {
+        for (int i = 0; i < 10; i++) {
+            gerda_fhss_record(ch, 0, 0);
+        }
+    }
+    TEST_ASSERT_TRUE(gerda_fhss_denylist_count() <= 2);
+    TEST_ASSERT_EQUAL(0, gerda_fhss_is_denylisted(4));
+
+    gerda_smart_fhss = 0;
+    gerda_fhss_reset(0, 0);
+}
+
 int main(int argc, char **argv)
 {
     UNITY_BEGIN();
@@ -204,10 +355,15 @@ int main(int argc, char **argv)
     RUN_TEST(test_sha256_abc);
     RUN_TEST(test_hmac_rfc4231_case1);
     RUN_TEST(test_hmac_rfc4231_case2);
+    RUN_TEST(test_hmac_rfc4231_case3);
     RUN_TEST(test_hkdf_rfc5869_case1_32);
     RUN_TEST(test_kdf_deterministic_and_phrase);
     RUN_TEST(test_replay_window);
+    RUN_TEST(test_replay_window_edges);
     RUN_TEST(test_ota_mac_xor_roundtrip_and_flag);
+    RUN_TEST(test_mac_payload_tamper_and_uid_mismatch);
+    RUN_TEST(test_secure_on_off_interop);
     RUN_TEST(test_flight_profiles);
+    RUN_TEST(test_smart_fhss_histogram_and_diversity);
     return UNITY_END();
 }

@@ -22,6 +22,7 @@ window.GERDA_I18N_RU = {
   "ISM 2.4 GHz": "ISM 2.4 ГГц (2400–2480)",
   "CUSTOM_2640": "CUSTOM_2640 (~2640 МГц, не ISM)",
   "Gerda Secure Link": "Защищённый линк Gerda",
+  "Smart FHSS": "Умный FHSS",
   "Flight profile": "Профиль полёта",
   "Profile Balance": "Баланс (как в Lua)",
   "Profile Range": "Дальность (50 Гц, телеметрия 1:16)",

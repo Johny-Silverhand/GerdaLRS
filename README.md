@@ -12,8 +12,9 @@
 - Снимок hardware-таргетов ExpressLRS/targets (`bda4c92`) в `src/hardware/`.
 - Русский Web UI (вкладки Модель/Опции/Wi‑Fi/Обновление) и таблица строк `src/html/i18n-ru.js`.
 - Выбор **ISM 2.4 / CUSTOM_2640** в Web UI (`gerda-2g4` в options.json); по умолчанию ISM.
-- **Gerda Secure Link** (по умолчанию ВЫКЛ): HKDF/HMAC/anti-replay, тег XOR в поле CRC (0 доп. airtime). Сток ELRS, пока флаг выкл. Спека: [`docs/SECURITY.ru.md`](docs/SECURITY.ru.md).
+- **Gerda Secure Link** (по умолчанию ВЫКЛ): HMAC в CRC, тесты tamper/UID/ON↔OFF. [`docs/SECURITY.ru.md`](docs/SECURITY.ru.md).
 - Профили полёта в Web UI: **Баланс / Дальность / Скорость** (`gerda-profile`).
+- **Умный FHSS** (по умолчанию ВЫКЛ): гистограмма канала, soft denylist без смены hops. [`docs/FHSS.ru.md`](docs/FHSS.ru.md).
 - Брендинг Герда / GerdaLRS. Пароль Wi‑Fi AP: `expresslrs`.
 
 ## Честный changelog vs ExpressLRS
@@ -21,11 +22,11 @@
 | Тема | Сейчас vs сток ELRS | Ещё roadmap |
 | --- | --- | --- |
 | Bind / UID / ISM 2.4 | Совместимо, пока Secure OFF | — |
-| Secure ON | Gerda↔Gerda, HMAC в CRC, drop на fail | epoch против wrap-replay (Phase 4) |
+| Secure ON | Gerda↔Gerda, HMAC в CRC, drop на fail | epoch против wrap-replay |
+| FHSS | флаг выкл = сток; Умный FHSS = гистограмма + LQ/AFC, hops как ELRS | синхронный skip-map по эфиру |
 | Профили | TX при загрузке: 50 Гц 1:16 / 500 Гц 1:64; Баланс = Lua | отдельный пункт Lua (пока Web UI) |
 | Dynpower | Дальность: boost с LQ&lt;70 (сток 50), не снижать мощность пока LQ&lt;99 | adaptive MCS |
 | MSP | при низком LQ слот отдаётся RC (`SendRCdataToRF`) | telem-slot steal |
-| FHSS | сток ELRS | IA-FHSS нет хука RSSI-на-хоп → Phase 4 |
 | CUSTOM_2640 | опция есть; **не** дальность | измерение на железе |
 | Бинарники релиза | не публикуются этим PR | после прошивки пары |
 
@@ -78,9 +79,9 @@ Lua на аппаратуре показывает **RM Ranger Nano**. Корп�
 1. **Русский Web UI** — таблица `src/html/i18n-ru.js`; дальше доперевести длинные help-тексты PWM/Hardware.
 2. **Домен** — ISM 2.4 по умолчанию; CUSTOM_2640 в Web UI (оба конца должны совпадать). Не обещает дальность.
 3. **Безопасность** — Secure Link спроектирован и вшит в TX pack / RX unpack за флагом. Default OFF. См. [`docs/SECURITY.ru.md`](docs/SECURITY.ru.md).
-4. **Дальность/скорость** — профили + MSP-priority + чуть более «липкий» dynpower на Дальности. Adaptive MCS, IA-FHSS, FEC — Phase 4.
+4. **Дальность/скорость** — профили + MSP-priority + dynpower на Дальности. Умный FHSS: гистограмма, hops не ломаем. Adaptive MCS / synced skip — дальше.
 
-Архитектура: [`docs/ARCHITECTURE.ru.md`](docs/ARCHITECTURE.ru.md). Безопасность: [`docs/SECURITY.ru.md`](docs/SECURITY.ru.md).
+Архитектура: [`docs/ARCHITECTURE.ru.md`](docs/ARCHITECTURE.ru.md). Безопасность: [`docs/SECURITY.ru.md`](docs/SECURITY.ru.md). FHSS: [`docs/FHSS.ru.md`](docs/FHSS.ru.md).
 
 ## Сборка
 
@@ -150,7 +151,7 @@ Upstream README ExpressLRS можно сравнить с https://github.com/Exp
 
 ## English
 
-GerdaLRS is a GPL-3.0 ExpressLRS derivative (upstream `7684347ee697b3fa4318f99a02b6ae6f5d703307`). Focus: Russian Web UI, selectable ISM 2.4 vs CUSTOM_2640, Gerda Secure Link (default OFF, HMAC-in-CRC), flight profiles Range/Balance/Speed. Stock ELRS air when Gerda flags are off.
+GerdaLRS is a GPL-3.0 ExpressLRS derivative (upstream `7684347ee697b3fa4318f99a02b6ae6f5d703307`). Focus: Russian Web UI, ISM 2.4 vs CUSTOM_2640, Gerda Secure Link (default OFF, HMAC-in-CRC), flight profiles, smart FHSS soft-denylist (default OFF; hop order unchanged). Stock ELRS air when Gerda flags are off.
 
 **v1 hardware pair**
 
@@ -167,7 +168,8 @@ Non-ISM frequencies (including ~2640 MHz) are the operator’s legal responsibil
 - [x] Native-тесты hop-таблицы CUSTOM_2640.
 - [x] Спека + примитивы Secure Link (KDF/HMAC/anti-replay) и хуки TX/RX за флагом.
 - [x] Профили Баланс/Дальность/Скорость в Web UI.
+- [x] Умный FHSS (гистограмма, hops не меняем) + расширенные native-тесты Secure Link.
 - [ ] Доперевести длинные help-тексты PWM/Hardware pins.
 - [ ] Снять `hardware.json` с живого FlyFish 9624R.
 - [ ] Прошивка пары на железе (не в этом раунде).
-- [ ] Phase 4: IA-FHSS, epoch anti-replay, adaptive MCS.
+- [ ] Synced FHSS skip-map, epoch anti-replay, adaptive MCS.

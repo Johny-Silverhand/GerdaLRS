@@ -3,6 +3,7 @@
 #include "gerda_domain.h"
 #include "gerda_security.h"
 #include "gerda_link.h"
+#include "gerda_fhss.h"
 
 #include "logging.h"
 
@@ -97,6 +98,7 @@ void saveOptions(Stream &stream, bool customised)
     doc["domain"] = firmwareOptions.domain;
     doc["gerda-2g4"] = gerda_2g4_band_index();
     doc["gerda-secure"] = gerda_secure_link ? 1 : 0;
+    doc["gerda-fhss"] = gerda_smart_fhss ? 1 : 0;
     doc["gerda-profile"] = (gerda_profile == GERDA_PROFILE_RANGE || gerda_profile == GERDA_PROFILE_SPEED)
         ? gerda_profile : 0;
     doc["customised"] = customised;
@@ -222,6 +224,13 @@ static void options_LoadFromFlashOrFile(EspFlashStream &strmFlash)
             gerda_secure_link = doc["gerda-secure"].as<int>() ? 1 : 0;
         }
     }
+    if (!doc["gerda-fhss"].isNull()) {
+        if (doc["gerda-fhss"].is<bool>()) {
+            gerda_smart_fhss = doc["gerda-fhss"].as<bool>() ? 1 : 0;
+        } else {
+            gerda_smart_fhss = doc["gerda-fhss"].as<int>() ? 1 : 0;
+        }
+    }
     if (!doc["gerda-profile"].isNull()) {
         int p = doc["gerda-profile"].as<int>();
         gerda_profile = (p == GERDA_PROFILE_RANGE || p == GERDA_PROFILE_SPEED) ? (uint8_t)p : 0;
@@ -242,6 +251,7 @@ void options_SetTrueDefaults()
     doc["domain"] = firmwareOptions.domain;
     doc["gerda-2g4"] = gerda_2g4_band_index();
     doc["gerda-secure"] = gerda_secure_link ? 1 : 0;
+    doc["gerda-fhss"] = gerda_smart_fhss ? 1 : 0;
     doc["gerda-profile"] = (gerda_profile == GERDA_PROFILE_RANGE || gerda_profile == GERDA_PROFILE_SPEED)
         ? gerda_profile : 0;
     doc["flash-discriminator"] = firmwareOptions.flash_discriminator;

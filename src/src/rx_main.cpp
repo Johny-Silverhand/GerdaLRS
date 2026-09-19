@@ -1,6 +1,7 @@
 #include "rxtx_common.h"
 #include "LowPassFilter.h"
 #include "gerda_security.h"
+#include "gerda_fhss.h"
 
 #include "crc.h"
 #include "telemetry_protocol.h"
@@ -77,6 +78,21 @@
 #define DIVERSITY_ANTENNA_RSSI_TRIGGER 5
 #define PACKET_TO_TOCK_SLACK 200 // Desired buffer time between Packet ISR and Tock ISR
 ///////////////////
+
+static uint8_t gerda_hop_ch(void)
+{
+    if (FHSSusePrimaryFreqBand) {
+        return FHSSsequence[FHSSptr];
+    }
+    return FHSSsequence_DualBand[FHSSptr];
+}
+
+static void gerda_fhss_bind_table(void)
+{
+    uint8_t n = (uint8_t)FHSSgetChannelCount();
+    uint8_t sync = FHSSusePrimaryFreqBand ? (uint8_t)sync_channel : (uint8_t)sync_channel_DualBand;
+    gerda_fhss_reset(n, sync);
+}
 
 device_affinity_t ui_devices[] = {
   {&Serial0_device, 1},
@@ -331,6 +347,7 @@ void SetRFLinkRate(uint8_t index, bool bindMode) // Set speed of RF link
 
     FHSSusePrimaryFreqBand = !(ModParams->radio_type == RADIO_TYPE_LR1121_LORA_2G4) && !(ModParams->radio_type == RADIO_TYPE_LR1121_GFSK_2G4);
     FHSSuseDualBand = ModParams->radio_type == RADIO_TYPE_LR1121_LORA_DUAL;
+    gerda_fhss_bind_table();
 
     Radio.Config(ModParams->bw, ModParams->sf, ModParams->cr, FHSSgetInitialFreq(),
                  ModParams->PreambleLen, invertIQ, ModParams->PayloadLength, 0
@@ -748,7 +765,13 @@ void ICACHE_RAM_ATTR HWtimerCallbackTick() // this is 180 out of phase with the 
     CRSF::LinkStatistics.uplink_Link_quality = uplinkLQ;
     // Only advance the LQI period counter if we didn't send Telemetry this period
     if (!alreadyTLMresp)
+    {
+        if (!InBindingMode && !LQCalc.currentIsSet() && gerda_fhss_neutralize_miss(gerda_hop_ch()))
+        {
+            LQCalc.add();
+        }
         LQCalc.inc();
+    }
 
     alreadyTLMresp = false;
     alreadyFHSS = false;
@@ -1172,9 +1195,11 @@ static bool ICACHE_RAM_ATTR ProcessRfPacket_SYNC(uint32_t const now, OTA_Sync_s 
 
 bool ICACHE_RAM_ATTR ProcessRFPacket(SX12xxDriverCommon::rx_status const status)
 {
+    const uint8_t hopCh = gerda_hop_ch();
     if (status != SX12xxDriverCommon::SX12XX_RX_OK)
     {
         DBGVLN("HW CRC error");
+        gerda_fhss_record(hopCh, 0, 0);
         #if defined(DEBUG_RX_SCOREBOARD)
             lastPacketCrcError = true;
         #endif
@@ -1192,6 +1217,7 @@ bool ICACHE_RAM_ATTR ProcessRFPacket(SX12xxDriverCommon::rx_status const status)
     if (!OtaValidatePacketCrc(otaPktPtr))
     {
         DBGVLN("CRC error");
+        gerda_fhss_record(hopCh, 0, 0);
         #if defined(DEBUG_RX_SCOREBOARD)
             lastPacketCrcError = true;
         #endif
@@ -1258,7 +1284,7 @@ bool ICACHE_RAM_ATTR ProcessRFPacket(SX12xxDriverCommon::rx_status const status)
     getRFlinkInfo();
 
     // Adjusts FreqCorrection for RX freq offset
-    if (Radio.FrequencyErrorAvailable())
+    if (Radio.FrequencyErrorAvailable() && !gerda_fhss_skip_freq_corr(hopCh))
     {
     #if defined(RADIO_SX127X)
         int32_t tempFreqCorrection = HandleFreqCorr(Radio.GetFrequencyErrorbool(Radio.GetProcessingPacketRadio()), Radio.GetProcessingPacketRadio());
@@ -1284,6 +1310,7 @@ bool ICACHE_RAM_ATTR ProcessRFPacket(SX12xxDriverCommon::rx_status const status)
 
     // Received a packet, that's the definition of LQ
     LQCalc.add();
+    gerda_fhss_record(hopCh, 1, Radio.LastPacketRSSI);
     // Extend sync duration since we've received a packet at this rate
     // but do not extend it indefinitely
     RFmodeCycleMultiplier = RFmodeCycleMultiplierSlow;
@@ -1854,6 +1881,7 @@ static void ExitBindingMode()
 
     OtaUpdateCrcInitFromUid();
     FHSSrandomiseFHSSsequence(uidMacSeedGet());
+    gerda_fhss_bind_table();
 
     webserverPreventAutoStart = true;
 
@@ -2172,6 +2200,7 @@ void setup()
         setupBindingFromConfig();
 
         FHSSrandomiseFHSSsequence(uidMacSeedGet());
+        gerda_fhss_bind_table();
 
         setupRadio();
 
