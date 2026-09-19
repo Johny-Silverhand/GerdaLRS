@@ -1,5 +1,6 @@
 #include "targets.h"
 #include "options.h"
+#include "gerda_domain.h"
 
 #include "logging.h"
 
@@ -23,6 +24,12 @@ const char *wifi_ap_ssid = "GerdaLRS RX";
 #endif
 const char *wifi_ap_password = "expresslrs";
 const char *wifi_ap_address = "10.0.0.1";
+
+#if defined(GERDA_DOMAIN_CUSTOM_2640)
+uint8_t gerda_2g4_band = 1;
+#else
+uint8_t gerda_2g4_band = 0;
+#endif
 
 #if defined(UNIT_TEST)
 char *device_name = DEVICE_NAME;
@@ -86,6 +93,7 @@ void saveOptions(Stream &stream, bool customised)
     #endif
     doc["is-airport"] = firmwareOptions.is_airport;
     doc["domain"] = firmwareOptions.domain;
+    doc["gerda-2g4"] = gerda_2g4_band_index();
     doc["customised"] = customised;
     doc["flash-discriminator"] = firmwareOptions.flash_discriminator;
 
@@ -199,6 +207,9 @@ static void options_LoadFromFlashOrFile(EspFlashStream &strmFlash)
     firmwareOptions.dji_permanently_armed = doc["dji-permanently-armed"] | false;
     #endif
     firmwareOptions.domain = doc["domain"] | 0;
+    if (!doc["gerda-2g4"].isNull()) {
+        gerda_2g4_band = (doc["gerda-2g4"].as<int>() == 1) ? 1 : 0;
+    }
     firmwareOptions.flash_discriminator = doc["flash-discriminator"] | 0U;
 
     builtinOptions.clear();
@@ -213,6 +224,7 @@ void options_SetTrueDefaults()
     JsonDocument doc;
     // The Regulatory Domain is retained, as there is no sensible default
     doc["domain"] = firmwareOptions.domain;
+    doc["gerda-2g4"] = gerda_2g4_band_index();
     doc["flash-discriminator"] = firmwareOptions.flash_discriminator;
 
     File options = SPIFFS.open("/options.json", "w");

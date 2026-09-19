@@ -13,7 +13,8 @@
 // LR1121 2.4 front-ends) are matched for ~2.4–2.5 GHz; using 2640 MHz
 // without a suitable antenna / matching network will usually hurt range.
 //
-// Uncomment in src/user_defines.txt:
+// Runtime selection is options.json "gerda-2g4" (Web UI). This define only
+// sets the factory default before the first options file exists:
 //   -DGERDA_DOMAIN_CUSTOM_2640
 #if defined(GERDA_DOMAIN_CUSTOM_2640)
 #define GERDA_DOMAIN_NAME "CUST2640"
@@ -21,5 +22,5 @@
 #define GERDA_DOMAIN_NAME "ISM2G4"
 #endif
 
-// Localization / security / MCS stubs live in src/lib/GERDA/. They are not
-// wired into the OTA path yet (by design).
+// Localization is in src/html/. Security / MCS stubs live in src/lib/GERDA/.
+// Security stubs are hooked after UID setup but do not alter OTA packets.

@@ -10,9 +10,10 @@
 
 - Полный исходник ExpressLRS (не README-only).
 - Снимок hardware-таргетов ExpressLRS/targets (`bda4c92`) в `src/hardware/`.
-- Документация архитектуры и чеклист следующих шагов.
-- Заготовки модулей (stubs/TODO), **без** рабочего радио-крипто и без включения 2640 МГц по умолчанию.
-- Лёгкий брендинг Web UI (Герда / GerdaLRS). Пароль Wi‑Fi AP по-прежнему `expresslrs`.
+- Русский Web UI (вкладки Модель/Опции/Wi‑Fi/Обновление) и таблица строк `src/html/i18n-ru.js`.
+- Выбор **ISM 2.4 / CUSTOM_2640** в Web UI (`gerda-2g4` в options.json); по умолчанию ISM.
+- Stubs безопасности (KDF/HMAC/anti-replay) + хук после UID; **не** крипто на эфире.
+- Брендинг Герда / GerdaLRS. Пароль Wi‑Fi AP: `expresslrs`.
 
 ## Оборудование
 
@@ -37,22 +38,32 @@
 
 Подробности: [`docs/HARDWARE.ru.md`](docs/HARDWARE.ru.md).
 
-### Передатчик
+### Передатчик (v1)
 
-Точная модель TX **неизвестна**. Плейсхолдеры LR1121:
+Lua на аппаратуре показывает **RM Ranger Nano**. Корпус/фото могут быть подписаны как Ranger Micro — для прошивки ориентируйтесь на **Lua-имя**.
 
-| Путь | Firmware env |
+Это модуль JR-bay **2.4 ГГц SX1280** (не LR1121). USB-C, XT30 6–16.8 V, вентилятор, RP-SMA.
+
+| | |
 | --- | --- |
-| `generic.tx_dual.gemini` | `Unified_ESP32_LR1121_TX` (`_via_UART` / `_via_WIFI` / `_via_ETX`) |
+| Configurator / product_name | **RadioMaster Ranger Nano 2.4GHz TX** |
+| Lua | `RM Ranger Nano` |
+| Путь | **`radiomaster.tx_2400.ranger-nano`** |
+| Firmware env | `Unified_ESP32_2400_TX` (`_via_UART` / `_via_WIFI`) |
+| Layout | `TX/Radiomaster Ranger Micro.json` (Nano использует тот же layout + overlay мощности) |
 
-Не выбирайте SX128x TX «наугад».
+Рядом в `targets.json` есть `radiomaster.tx_2400.ranger-micro` (`RM Ranger Micro`) — **не** выбирайте его, если Lua пишет Nano.
+
+**Совместимость пары v1:** стандартные режимы ELRS 2.4 работают между SX1280 TX и LR1121 RX. Режимы только для LR1121 (DK500 / K1000 и т.п.) требуют LR1121 на **обоих** концах — для Ranger Nano это **вне v1**.
+
+Пример настроек Lua (не дефолт прошивки): Packet Rate 50 Hz, Telem Std 1:16, Switch Wide, Link Normal, Model Match Off, TX Power 1000 mW.
 
 ## Дорожная карта
 
-1. **Русский Web UI** — слой локализации поверх HTML ExpressLRS (`src/lib/GERDA/gerda_i18n.h`, `src/html/i18n-ru.stub.js`).
-2. **Домен** — ISM 2.4 по умолчанию; опционально `CUSTOM_2640` (`-DGERDA_DOMAIN_CUSTOM_2640`, заготовка в `src/lib/FHSS/FHSS.cpp`).
-3. **Безопасность** — post-bind session key (KDF), HMAC пакетов, anti-replay. Пока только дизайн и stubs: `src/lib/GERDA/gerda_security.h`. Сток ELRS UID **не** заменяется.
-4. **Дальность/скорость** — adaptive MCS, FHSS с учётом помех, приоритет каналов управления, межпакетный FEC. Дизайн: `src/lib/GERDA/gerda_link.h`.
+1. **Русский Web UI** — таблица `src/html/i18n-ru.js`, вкладки уже на русском; дальше доперевести длинные help-тексты.
+2. **Домен** — ISM 2.4 по умолчанию; CUSTOM_2640 выбирается в Web UI (оба конца должны совпадать).
+3. **Безопасность** — хук `gerda_on_uid_ready` + stubs KDF/HMAC/anti-replay. Сток UID на эфире. Не заявлять «защищённый линк».
+4. **Дальность/скорость** — adaptive MCS, FHSS с учётом помех, приоритет каналов, FEC. Пока дизайн: `gerda_link.h`.
 
 Архитектура: [`docs/ARCHITECTURE.ru.md`](docs/ARCHITECTURE.ru.md).
 
@@ -64,52 +75,47 @@
 
 Откройте каталог **`src/`** как проект PlatformIO.
 
-Минимум в `src/user_defines.txt` для RX 2.4 / LR1121:
+Минимум в `src/user_defines.txt` для **этой пары** (SX1280 TX + LR1121 RX):
 
 ```
 -DMY_BINDING_PHRASE="ваша_фраза"
 -DRegulatory_Domain_ISM_2400
+-DRegulatory_Domain_FCC_915
 -DAUTO_WIFI_ON_INTERVAL=60
 -DLOCK_ON_FIRST_CONNECTION
 ```
 
-Для LR1121 900 МГц-части unified-прошивки задайте 900-домен (например `-DRegulatory_Domain_FCC_915`) — иначе сборка 900/dual упрётся в `#error` в `targets.h`. Для чисто 2.4 LR1121 hop-таблица ISM2G4 живёт в `domainsDualBand[]`.
+`ISM_2400` нужен Ranger Nano (SX1280). `FCC_915` (или другой 900-домен) нужен, чтобы сборка LR1121 RX прошла `#error` в `targets.h`; hop 2.4 всё равно берётся из `domainsDualBand[]` / Web UI `gerda-2g4`.
 
-Среда приёмника FlyFish / generic C3 LR1121:
+**TX — RadioMaster Ranger Nano 2.4:**
 
-```text
-Unified_ESP32C3_LR1121_RX_via_WIFI
-Unified_ESP32C3_LR1121_RX_via_UART
-Unified_ESP32C3_LR1121_RX_via_BetaflightPassthrough
+```bash
+cd src
+pio run -e Unified_ESP32_2400_TX_via_UART
 ```
+
+В списке конфигурации: `RadioMaster Ranger Nano 2.4GHz TX` / путь `radiomaster.tx_2400.ranger-nano`.
+
+**RX — FlyFish 9624R 2.4:**
 
 ```bash
 cd src
 pio run -e Unified_ESP32C3_LR1121_RX_via_UART
 ```
 
-После сборки PlatformIO спросит (или примите через `board_config`) hardware path. Предпочтительно:
+Путь: `generic.rx_dual.c3-plain` (безопаснее) или `flyfish.rx_dual.9624r` (имя как на устройстве, пин-аут не снят).
 
-```text
-generic.rx_dual.c3-plain
-```
+Не собирайте HappyModel / `Unified_ESP32_2400_RX` (SX128x) для FlyFish.
 
-или, понимая риск пин-аута:
-
-```text
-flyfish.rx_dual.9624r
-```
-
-Бинарник: `src/.pio/build/<env>/firmware.bin`. Прошивка по Wi‑Fi: AP `GerdaLRS RX`, пароль `expresslrs`, `http://10.0.0.1/`.
-
-Плейсхолдер TX: `Unified_ESP32_LR1121_TX_via_UART` / `_via_WIFI`.
+Бинарник: `src/.pio/build/<env>/firmware.bin`. Wi‑Fi AP: `GerdaLRS RX` / `GerdaLRS TX`, пароль `expresslrs`, `http://10.0.0.1/`. Диапазон 2.4/2640 — вкладка **Опции**.
 
 ### ExpressLRS Configurator, режим Local
 
 1. Установите [ExpressLRS Configurator](https://github.com/ExpressLRS/ExpressLRS-Configurator/releases/).
 2. Source: **Local**, укажите этот репозиторий.
-3. RX: Radio = **LR1121**, MCU = **ESP32-C3**. Device: **Generic C3 LR1121 2.4/900 RX** (`generic.rx_dual.c3-plain`) либо **FlyFish 9624R 2.4**, если список подхватил `src/hardware/targets.json`.
-4. Не выбирайте HappyModel / SX128x unified 2.4.
+3. **TX:** Device **RadioMaster Ranger Nano 2.4GHz TX** (`radiomaster.tx_2400.ranger-nano`). Radio SX1280 / Unified ESP32 2400 TX.
+4. **RX:** Radio **LR1121**, MCU **ESP32-C3**. Device **Generic C3 LR1121 2.4/900 RX** или **FlyFish 9624R 2.4**.
+5. Не выбирайте HappyModel SX128x RX для FlyFish и не берите Ranger Micro, если Lua пишет Nano.
 
 ## Радио и закон
 
@@ -117,7 +123,7 @@ flyfish.rx_dual.9624r
 
 Фронтенд LR1121 на FlyFish 9624R согласован примерно на **2.4–2.5 ГГц**. CUSTOM_2640, скорее всего, ухудшит дальность без подходящей антенны и согласования.
 
-`CUSTOM_2640` **выключен** по умолчанию. Не включайте `-DGERDA_DOMAIN_CUSTOM_2640`, пока не понимаете последствия и не прошиваете **и TX, и RX**.
+`CUSTOM_2640` **выключен** по умолчанию (ISM 2.4). Включать только в Web UI на **TX и RX** сразу. `-DGERDA_DOMAIN_CUSTOM_2640` лишь меняет заводской default на 2640.
 
 ## GPL-3.0
 
@@ -129,17 +135,21 @@ Upstream README ExpressLRS можно сравнить с https://github.com/Exp
 
 ## English
 
-GerdaLRS is a GPL-3.0 ExpressLRS derivative (upstream `7684347ee697b3fa4318f99a02b6ae6f5d703307`). Focus: Russian Web UI, optional selectable ISM 2.4 vs CUSTOM_2640, stronger-than-UID link security (design/stubs only), and planned range/speed work.
+GerdaLRS is a GPL-3.0 ExpressLRS derivative (upstream `7684347ee697b3fa4318f99a02b6ae6f5d703307`). Focus: Russian Web UI, selectable ISM 2.4 vs CUSTOM_2640, stronger-than-UID security (stubs/hooks only), planned range/speed work.
 
-**Primary RX:** FlyFish 9624R 2.4 (ESP32-C3 + LR1121, single U.FL). Official path: `generic.rx_dual.c3-plain` → `Unified_ESP32C3_LR1121_RX` / `Generic C3 LR1121.json`. Unverified alias: `flyfish.rx_dual.9624r`. Do **not** flash SX128x HappyModel binaries. TX model unknown — use Generic LR1121 TX placeholders.
+**v1 hardware pair**
 
-Non-ISM frequencies (including ~2640 MHz) are the operator’s legal responsibility. LR1121 2.4 matching is ~2.4–2.5 GHz; 2640 MHz will likely reduce range. Default RF remains stock ISM 2.4.
+- **RX:** FlyFish 9624R 2.4 (ESP32-C3 + LR1121). Path: `generic.rx_dual.c3-plain` or unverified alias `flyfish.rx_dual.9624r`. Env: `Unified_ESP32C3_LR1121_RX_via_UART`. Never flash SX128x HappyModel RX binaries.
+- **TX:** RadioMaster Ranger Nano 2.4 (Lua `RM Ranger Nano`; casing may say Micro). Path: `radiomaster.tx_2400.ranger-nano`. Env: `Unified_ESP32_2400_TX_via_UART`. SX1280, not LR1121. Standard 2.4 ELRS rates interoperate with the LR1121 RX; DK500/K1000 are out of scope for this TX.
+
+Non-ISM frequencies (including ~2640 MHz) are the operator’s legal responsibility. 2.4 matching is ~2.4–2.5 GHz; 2640 MHz will likely reduce range. Default RF remains ISM 2.4; both ends must match if you select CUSTOM_2640 in the Web UI.
 
 ## Следующие шаги
 
-- [ ] Подключить `i18n-ru.stub.js` к Web UI (вкладки, опции, предупреждения).
-- [ ] Runtime-выбор ISM_2400 / CUSTOM_2640 в options JSON (оба конца линка).
-- [ ] Снять `hardware.json` с живого FlyFish 9624R и сверить GPIO с generic layout.
-- [ ] Назвать конкретную модель TX и добавить проверенный таргет.
-- [ ] Спека OTA для KDF + HMAC + anti-replay **до** включения в пакеты.
-- [ ] Native-тесты FHSS для CUSTOM_2640 и политика MCS/FEC.
+- [x] Русские вкладки Web UI + `i18n-ru.js`.
+- [x] Runtime ISM / CUSTOM_2640 в options (`gerda-2g4`).
+- [x] TX: RadioMaster Ranger Nano 2.4 (`radiomaster.tx_2400.ranger-nano`).
+- [x] Native-тесты hop-таблицы CUSTOM_2640.
+- [ ] Доперевести длинные help-тексты PWM/Hardware pins.
+- [ ] Снять `hardware.json` с живого FlyFish 9624R.
+- [ ] Спека OTA для настоящего HMAC **до** изменения пакетов.

@@ -1,6 +1,7 @@
 #include <cstdint>
 #include <SX1280_Regs.h>
 #include <FHSS.h>
+#include <gerda_domain.h>
 #include <unity.h>
 #include <set>
 
@@ -71,6 +72,7 @@ void test_fhss_same(void)
 
 void test_fhss_reg_same(void)
 {
+    gerda_2g4_band = 0;
     FHSSrandomiseFHSSsequence(0x01020304L);
 
     const uint32_t numFhss = FHSSgetSequenceCount();
@@ -84,8 +86,36 @@ void test_fhss_reg_same(void)
     }
 }
 
+void test_fhss_gerda_ism_default(void)
+{
+    gerda_2g4_band = 0;
+    FHSSrandomiseFHSSsequence(0x01020304L);
+    TEST_ASSERT_EQUAL_STRING("ISM2G4", FHSSgetRegulatoryDomain());
+    TEST_ASSERT_EQUAL_UINT32(FREQ_HZ_TO_REG_VAL(2400400000), FHSSconfig->freq_start);
+}
+
+void test_fhss_gerda_custom_2640(void)
+{
+    gerda_2g4_band = 1;
+    FHSSrandomiseFHSSsequence(0x01020304L);
+    TEST_ASSERT_EQUAL_STRING("CUST2640", FHSSgetRegulatoryDomain());
+    TEST_ASSERT_EQUAL_UINT32(FREQ_HZ_TO_REG_VAL(2600400000), FHSSconfig->freq_start);
+    TEST_ASSERT_EQUAL_UINT32(FREQ_HZ_TO_REG_VAL(2679400000), FHSSconfig->freq_stop);
+    TEST_ASSERT_EQUAL_UINT32(80, FHSSconfig->freq_count);
+
+    for (unsigned int i = 1; i < FHSSgetSequenceCount(); i++) {
+        uint32_t freq = FHSSgetNextFreq();
+        uint32_t reg = FREQ_HZ_TO_REG_VAL((2600400000ULL + FHSSsequence[i] * 1000000ULL));
+        TEST_ASSERT_UINT32_WITHIN(1, reg, freq);
+    }
+}
+
 // Unity setup/teardown
-void setUp() {}
+void setUp()
+{
+    gerda_2g4_band = 0;
+}
+
 void tearDown() {}
 
 int main(int argc, char **argv)
@@ -96,6 +126,8 @@ int main(int argc, char **argv)
     RUN_TEST(test_fhss_unique);
     RUN_TEST(test_fhss_same);
     RUN_TEST(test_fhss_reg_same);
+    RUN_TEST(test_fhss_gerda_ism_default);
+    RUN_TEST(test_fhss_gerda_custom_2640);
     UNITY_END();
 
     return 0;

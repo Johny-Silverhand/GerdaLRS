@@ -11,7 +11,7 @@
 - Web UI target: `FlyFish 9624R 2.4`
 - Прошивка на устройстве: `master (768434) 2640`
 
-`2640` в строке версии — не стоковый ExpressLRS на `7684347` (там 2.4 = ISM2G4). Это метка кастомной сборки; в GerdaLRS CUSTOM_2640 пока только заготовка.
+`2640` в строке версии — не стоковый ExpressLRS на `7684347` (там 2.4 = ISM2G4). Это метка кастомной сборки. В GerdaLRS CUSTOM_2640 выбирается в Web UI (`gerda-2g4`), по умолчанию ISM 2.4.
 
 ## Чего нет в официальном ExpressLRS
 
@@ -58,20 +58,22 @@ flyfish.rx_dual.9624r
 
 Похожий серийный продукт с тем же layout/firmware: `radiomaster.rx_dual.xr2` (RadioMaster XR2 2G4 RX). Это **не** доказательство совместимости FlyFish.
 
-## TX (плейсхолдеры)
+## TX: RadioMaster Ranger Nano 2.4 (v1)
 
-Модель передатчика неизвестна. Пока:
+Lua: **RM Ranger Nano**. На пластике модуля может быть написано Ranger Micro — для прошивки используйте Nano.
 
-```
-generic.tx_dual.gemini
-  product_name : Gemini XrossBand 2.4/900 TX
-  firmware     : Unified_ESP32_LR1121_TX
-  layout_file  : TX/Generic LR1121 Gemini.json
-```
+- Радио: **SX1280** (не LR1121)
+- `radiomaster.tx_2400.ranger-nano`
+- `product_name`: RadioMaster Ranger Nano 2.4GHz TX
+- `firmware`: Unified_ESP32_2400_TX
+- `layout_file`: Radiomaster Ranger Micro.json + overlay `power_values` [-18,-15,-12,-8,-5,0]
+- Env: `Unified_ESP32_2400_TX_via_UART` / `_via_WIFI`
 
-Env: `Unified_ESP32_LR1121_TX_via_UART` | `_via_WIFI` | `_via_ETX`.
+Не путать с `radiomaster.tx_2400.ranger-micro` (Lua `RM Ranger Micro`).
 
-Gemini layout предполагает разводку generic dual-band TX, не вашу конкретную головку. Прошивка «наугад» может не поднять радио или вентилятор/кнопки. Когда появится точная модель — добавим таргет по схеме, а не по догадке.
+**Совместимость с FlyFish LR1121 RX:** обычные пакетные режимы ELRS 2.4 (например 50–500 Hz в зависимости от версии) работают cross-chip. DK500/K1000 и прочие LR1121-only режимы на этом TX недоступны.
+
+Пример Lua (только документация): 50 Hz, Telem 1:16, Switch Wide, Link Normal, Model Match Off, 1000 mW. LQ 0/50 на скрине = нет линка в тот момент.
 
 ## RF: 2.4 vs 2640
 

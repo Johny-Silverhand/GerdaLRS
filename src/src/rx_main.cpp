@@ -1,5 +1,6 @@
 #include "rxtx_common.h"
 #include "LowPassFilter.h"
+#include "gerda_security.h"
 
 #include "crc.h"
 #include "telemetry_protocol.h"
@@ -1687,6 +1688,7 @@ static void setupBindingFromConfig()
         UID[0], UID[1], UID[2], UID[3], UID[4], UID[5], config.GetModelId());
 
     OtaUpdateCrcInitFromUid();
+    gerda_on_uid_ready(UID, UID_LEN);
 }
 
 static void setupRadio()

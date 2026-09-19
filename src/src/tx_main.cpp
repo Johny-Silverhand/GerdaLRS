@@ -1,4 +1,5 @@
 #include "rxtx_common.h"
+#include "gerda_security.h"
 
 #include "CRSFHandset.h"
 #include "dynpower.h"
@@ -1356,6 +1357,7 @@ static void setupBindingFromConfig()
     UID[0], UID[1], UID[2], UID[3], UID[4], UID[5]);
 
   OtaUpdateCrcInitFromUid();
+  gerda_on_uid_ready(UID, UID_LEN);
 }
 
 

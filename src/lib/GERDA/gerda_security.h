@@ -26,6 +26,10 @@
 //        monotonic packet counter / OtaNonce window; reject duplicates and
 //        old counters after a bind.
 //
+// Stubs: gerda_kdf_session_key / gerda_hmac_tag / gerda_replay_check always
+// return GERDA_SEC_NOT_IMPLEMENTED. gerda_on_uid_ready() is called from
+// rx_main / tx_main after UID setup and does NOT alter OTA packets.
+//
 // TODOs (next PRs, in order):
 //   [ ] Specify exact OTA field layout without breaking CRSF packet size
 //   [ ] Implement HKDF on ESP32 (mbedTLS) and a portable fallback
@@ -79,3 +83,6 @@ static inline int gerda_replay_check(uint32_t counter)
 #ifdef __cplusplus
 }
 #endif
+
+// C++ hook after UID is known (bind / boot). Does not alter OTA packets.
+void gerda_on_uid_ready(const uint8_t *uid, size_t uid_len);

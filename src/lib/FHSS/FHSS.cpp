@@ -26,14 +26,12 @@ const fhss_config_t domains[] = {
 
 #if defined(RADIO_LR1121)
 const fhss_config_t domainsDualBand[] = {
-#if defined(GERDA_DOMAIN_CUSTOM_2640)
+    {"ISM2G4", FREQ_HZ_TO_REG_VAL(2400400000), FREQ_HZ_TO_REG_VAL(2479400000), 80, 2440000000},
     // GerdaLRS CUSTOM_2640: same 80-hop span as ISM2G4, centered ~2640 MHz.
-    // Off by default. Illegal in many regions; 2.4 front-ends are matched
-    // ~2.4–2.5 GHz so range usually drops. TX and RX must use the same table.
+    // Selected at runtime via options.json "gerda-2g4" (Web UI). Illegal in
+    // many regions; 2.4 front-ends are matched ~2.4–2.5 GHz so range usually
+    // drops. TX and RX must use the same table.
     {"CUST2640", FREQ_HZ_TO_REG_VAL(2600400000), FREQ_HZ_TO_REG_VAL(2679400000), 80, 2640000000}
-#else
-    {"ISM2G4", FREQ_HZ_TO_REG_VAL(2400400000), FREQ_HZ_TO_REG_VAL(2479400000), 80, 2440000000}
-#endif
 };
 #endif
 
@@ -42,17 +40,14 @@ const fhss_config_t domainsDualBand[] = {
 
 const fhss_config_t domains[] = {
     {
-#if defined(GERDA_DOMAIN_CUSTOM_2640)
-        "CUST2640",
-        FREQ_HZ_TO_REG_VAL(2600400000), FREQ_HZ_TO_REG_VAL(2679400000), 80, 2640000000
-#elif defined(Regulatory_Domain_EU_CE_2400)
+#if defined(Regulatory_Domain_EU_CE_2400)
         "CE_LBT",
-        FREQ_HZ_TO_REG_VAL(2400400000), FREQ_HZ_TO_REG_VAL(2479400000), 80, 2440000000
-#elif defined(Regulatory_Domain_ISM_2400)
+#else
         "ISM2G4",
-        FREQ_HZ_TO_REG_VAL(2400400000), FREQ_HZ_TO_REG_VAL(2479400000), 80, 2440000000
 #endif
-    }
+        FREQ_HZ_TO_REG_VAL(2400400000), FREQ_HZ_TO_REG_VAL(2479400000), 80, 2440000000
+    },
+    {"CUST2640", FREQ_HZ_TO_REG_VAL(2600400000), FREQ_HZ_TO_REG_VAL(2679400000), 80, 2640000000}
 };
 #endif
 
@@ -88,7 +83,11 @@ uint16_t secondaryBandCount;
 
 void FHSSrandomiseFHSSsequence(const uint32_t seed)
 {
+#if defined(RADIO_SX128X)
+    FHSSconfig = &domains[gerda_2g4_band_index()];
+#else
     FHSSconfig = &domains[firmwareOptions.domain];
+#endif
     sync_channel = FHSSconfig->freq_count / 2;
     freq_spread = (FHSSconfig->freq_stop - FHSSconfig->freq_start) * FREQ_SPREAD_SCALE / (FHSSconfig->freq_count - 1);
     primaryBandCount = (FHSS_SEQUENCE_LEN / FHSSconfig->freq_count) * FHSSconfig->freq_count;
@@ -100,7 +99,7 @@ void FHSSrandomiseFHSSsequence(const uint32_t seed)
     FHSSrandomiseFHSSsequenceBuild(seed, FHSSconfig->freq_count, sync_channel, FHSSsequence);
 
 #if defined(RADIO_LR1121)
-    FHSSconfigDualBand = &domainsDualBand[0];
+    FHSSconfigDualBand = &domainsDualBand[gerda_2g4_band_index()];
     sync_channel_DualBand = FHSSconfigDualBand->freq_count / 2;
     freq_spread_DualBand = (FHSSconfigDualBand->freq_stop - FHSSconfigDualBand->freq_start) * FREQ_SPREAD_SCALE / (FHSSconfigDualBand->freq_count - 1);
     secondaryBandCount = (FHSS_SEQUENCE_LEN / FHSSconfigDualBand->freq_count) * FHSSconfigDualBand->freq_count;

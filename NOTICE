@@ -23,5 +23,6 @@ ExpressLRS, ExpressLRS LLC, and related names remain trademarks / marks of
 their respective owners. GerdaLRS is an independent derivative and is not
 affiliated with, endorsed by, or supported by ExpressLRS LLC.
 
-GerdaLRS modifications (documentation, branding, planned-module stubs, and
-the unverified FlyFish 9624R target alias) are likewise released under GPL-3.0.
+GerdaLRS modifications (documentation, Russian Web UI, CUSTOM_2640 hop table,
+security stubs, branding, and the unverified FlyFish 9624R target alias) are
+likewise released under GPL-3.0.

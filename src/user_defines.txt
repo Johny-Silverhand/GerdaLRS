@@ -29,10 +29,13 @@
 #-DRegulatory_Domain_EU_CE_2400
 
 ### GerdaLRS (optional, off by default) ###
-# Hop ~2600.4–2679.4 MHz instead of ISM 2.4 on SX128x / LR1121 2.4 tables.
+# Runtime hop-set is chosen in the Web UI (Options → Диапазон 2.4 / 2640),
+# stored as options.json "gerda-2g4": 0 = ISM 2.4, 1 = CUSTOM_2640.
+# Uncomment the define below only to make CUSTOM_2640 the factory default
+# before the first options.json exists. TX and RX MUST match.
 # NOT an ISM band. You are responsible for local law and licensing.
-# FlyFish 9624R / typical LR1121 2.4 matching is ~2.4–2.5 GHz; range will likely drop.
-# Flash BOTH TX and RX with the same setting. See docs/ARCHITECTURE.ru.md.
+# FlyFish 9624R / Ranger Nano 2.4 matching is ~2.4–2.5 GHz; range will likely drop.
+# See docs/ARCHITECTURE.ru.md.
 #-DGERDA_DOMAIN_CUSTOM_2640
 
 ### PERFORMANCE OPTIONS: ###

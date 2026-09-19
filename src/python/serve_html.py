@@ -34,6 +34,7 @@ config = {
             "rcvr-invert-tx": False,
             "lock-on-first-connection": True,
             "domain": 1,
+            "gerda-2g4": 0,
             # "wifi-on-interval": 60,
             "wifi-password": "w1f1-pAssw0rd",
             "wifi-ssid": "network-ssid"
@@ -143,32 +144,32 @@ def index():
     hasSubGHz = 'hasSubGHz' in request.query
     if 'chip' in request.query:
         chip = request.query['chip']
-    response.content_type = 'text/html; charset=latin9'
+    response.content_type = 'text/html; charset=utf-8'
     return apply_template('index.html')
 
 @route('/elrs.css')
 def elrs():
-    response.content_type = 'text/css; charset=latin9'
+    response.content_type = 'text/css; charset=utf-8'
     return apply_template('elrs.css')
 
 @route('/scan.js')
 def scan():
-    response.content_type = 'text/javascript; charset=latin9'
+    response.content_type = 'text/javascript; charset=utf-8'
     return apply_template('scan.js')
 
 @route('/mui.js')
 def mui():
-    response.content_type = 'text/javascript; charset=latin9'
+    response.content_type = 'text/javascript; charset=utf-8'
     return apply_template('mui.js')
 
 @route('/hardware.html')
 def hardware_html():
-    response.content_type = 'text/html; charset=latin9'
+    response.content_type = 'text/html; charset=utf-8'
     return apply_template('hardware.html')
 
 @route('/hardware.js')
 def hardware_js():
-    response.content_type = 'text/javascript; charset=latin9'
+    response.content_type = 'text/javascript; charset=utf-8'
     return apply_template('hardware.js')
 
 @route('/cw.html')
@@ -176,27 +177,27 @@ def cw_html():
     global chip
     if 'chip' in request.query:
         chip = request.query['chip']
-    response.content_type = 'text/html; charset=latin9'
+    response.content_type = 'text/html; charset=utf-8'
     return apply_template('cw.html')
 
 @route('/cw.js')
 def cw_js():
-    response.content_type = 'text/javascript; charset=latin9'
+    response.content_type = 'text/javascript; charset=utf-8'
     return apply_template('cw.js')
 
 @route('/cw')
 def cw():
-    response.content_type = 'application/json; charset=latin9'
+    response.content_type = 'application/json; charset=utf-8'
     return '{"radios": 2, "center": 915000000, "center2": 2440000000}'
 
 @route('/lr1121.html')
 def lr1121_html():
-    response.content_type = 'text/html; charset=latin9'
+    response.content_type = 'text/html; charset=utf-8'
     return apply_template('lr1121.html')
 
 @route('/lr1121.js')
 def lr1121_js():
-    response.content_type = 'text/javascript; charset=latin9'
+    response.content_type = 'text/javascript; charset=utf-8'
     return apply_template('lr1121.js')
 
 @route('/lr1121.json')
@@ -220,7 +221,7 @@ def lr1121_upload():
 
 @route('/config')
 def options():
-    response.content_type = 'application/json; charset=latin9'
+    response.content_type = 'application/json; charset=utf-8'
     return config
 
 @route('/config', method='POST')
@@ -254,7 +255,7 @@ def import_config():
 
 @route('/sethome', method='POST')
 def options():
-    response.content_type = 'application/json; charset=latin9'
+    response.content_type = 'application/json; charset=utf-8'
     return "Connecting to network '" + request.forms.get('network') + "', connect to http://elrs_tx.local from a browser on that network"
 
 @route('/networks.json')

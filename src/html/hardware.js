@@ -1,3 +1,5 @@
+@@include("i18n-ru.js")
+
 /* eslint-disable no-unused-vars */
 /* eslint-disable comma-dangle */
 /* eslint-disable require-jsdoc */
@@ -9,6 +11,7 @@ function _(el) {
 }
 
 function onReady() {
+  gerdaApplyI18n();
   // Add some tooltips to the pin type icons [CSS class name, Label]
   [['icon-input', 'Digital Input'], ['icon-output', 'Digital Output'], ['icon-analog', 'Analog Input'], ['icon-pwm', 'PWM Output']].forEach((t) =>
   {

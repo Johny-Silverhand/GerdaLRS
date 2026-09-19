@@ -10,8 +10,9 @@ GerdaLRS is based on a specific ExpressLRS revision so firmware strings like
 
 The user-reported RX Web UI string `master (768434) 2640` matches this firmware
 short hash. The `2640` suffix is **not** in stock ExpressLRS at that commit;
-stock 2.4 / LR1121 hopping remains ISM 2400–2479 MHz. CUSTOM_2640 is a GerdaLRS
-roadmap item (see `docs/ARCHITECTURE.ru.md`).
+stock 2.4 / LR1121 hopping remains ISM 2400–2479 MHz. GerdaLRS adds a runtime
+CUSTOM_2640 hop table selected via Web UI `gerda-2g4` (see `docs/ARCHITECTURE.ru.md`).
+Default remains ISM 2.4.
 
 To inspect the exact upstream commit on GitHub:
 
