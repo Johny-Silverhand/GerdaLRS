@@ -178,3 +178,19 @@ uint8_t gerda_fhss_miss_rate(uint8_t ch)
     }
     return (uint8_t)((uint16_t)s_miss[ch] * 100u / samples);
 }
+
+uint8_t gerda_fhss_hits(uint8_t ch)
+{
+    if (ch >= s_nch) {
+        return 0;
+    }
+    return s_hits[ch];
+}
+
+uint8_t gerda_fhss_misses(uint8_t ch)
+{
+    if (ch >= s_nch) {
+        return 0;
+    }
+    return s_miss[ch];
+}

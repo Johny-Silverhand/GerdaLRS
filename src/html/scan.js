@@ -473,6 +473,7 @@ function initOptions() {
       const data = JSON.parse(this.responseText);
       updateOptions(data['options']);
       updateConfig(data['config'], data['options']);
+      updateGerdaStats(data['gerda']);
       initBindingPhraseGen();
     }
   };
@@ -887,6 +888,32 @@ function submitButtonActions(e) {
 }
 _('submit-actions').addEventListener('click', submitButtonActions);
 @@end
+
+function updateGerdaStats(g) {
+  const el = _('gerda-range-stats');
+  if (!el) return;
+  if (!g) {
+    el.style.display = 'none';
+    return;
+  }
+  const lines = [];
+  lines.push('Gerda range stats (Wi‑Fi AP, не в эфире)');
+  lines.push('Профиль: ' + (g.profile === 1 ? 'Дальность' : g.profile === 2 ? 'Скорость' : 'Баланс'));
+  lines.push('FEC recoveries (on-air XOR ещё нет): ' + (g.fec_recoveries || 0));
+  lines.push('Умный FHSS: ' + (g.fhss_on ? 'вкл' : 'выкл') + ', denylist: ' + (g.fhss_deny || 0));
+  const miss = g.fhss_miss || [];
+  if (miss.length === 0) {
+    lines.push('CRC miss/канал: мало сэмплов (включите Умный FHSS и полетайте).');
+  } else {
+    const top = miss.slice().sort((a, b) => b.miss - a.miss).slice(0, 12);
+    lines.push('Худшие каналы (miss % / CRC fail / deny):');
+    top.forEach((row) => {
+      lines.push('  ch ' + row.ch + ': ' + row.miss + '%  fail=' + row.crc_fail + (row.deny ? '  DENY' : ''));
+    });
+  }
+  el.textContent = lines.join('\n');
+  el.style.display = 'block';
+}
 
 function updateOptions(data) {
   for (const [key, value] of Object.entries(data)) {

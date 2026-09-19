@@ -52,8 +52,10 @@ uint8_t gerda_fhss_max_denylist(uint8_t n_channels);
 uint8_t gerda_fhss_export_denylist(uint8_t *out, uint8_t max);
 void gerda_fhss_import_denylist(const uint8_t *in, uint8_t n);
 
-// Test/debug: miss rate 0–100, or 255 if too few samples.
+// Test/debug / Web UI: miss rate 0–100, or 255 if too few samples.
 uint8_t gerda_fhss_miss_rate(uint8_t ch);
+uint8_t gerda_fhss_hits(uint8_t ch);
+uint8_t gerda_fhss_misses(uint8_t ch);
 
 #ifdef __cplusplus
 }

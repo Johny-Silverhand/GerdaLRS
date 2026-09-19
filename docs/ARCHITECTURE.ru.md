@@ -10,8 +10,10 @@
 | Локализация | `src/lib/GERDA/gerda_i18n.h`, `src/html/i18n-ru.js`, `src/html/index.html` | RU вкладки + Secure/профили |
 | Домены | `src/lib/GERDA/gerda_domain.h`, `src/lib/FHSS/FHSS.cpp`, `src/lib/OPTIONS/options.cpp` | runtime ISM / CUSTOM_2640 |
 | Безопасность | `src/lib/GERDA/gerda_security.*`, `gerda_sha256.*`, `docs/SECURITY.ru.md` | XOR-MAC TX/RX, тесты tamper/ON↔OFF, default OFF |
-| Дальность/скорость | `src/lib/GERDA/gerda_link.*`, Web UI `gerda-profile` | профили + MSP defer + dynpower RANGE |
+| Дальность/скорость | `src/lib/GERDA/gerda_link.*`, Web UI `gerda-profile` | профили + MSP defer + dynpower RANGE + TLM backoff |
 | Умный FHSS | `src/lib/GERDA/gerda_fhss.*`, `docs/FHSS.ru.md` | гистограмма + soft denylist, hops не меняем |
+| XOR FEC (не в эфире) | `src/lib/GERDA/gerda_fec.*` | примитив + тесты; 50 Гц TOA не даёт второй посылки |
+| Эксперименты 30 км+ | `docs/RANGE_EXPERIMENTS.ru.md` | A/B vs сток на паре Ranger Nano + FlyFish |
 | Железо | `docs/HARDWARE.ru.md`, `src/hardware/targets.json` | пара v1 |
 
 ## 1. База
@@ -105,18 +107,19 @@ Native-тесты: `src/test/test_gerda/` (SHA-256, RFC 4231 HMAC, RFC 5869 HKDF
 | Фича | Статус | Где |
 | --- | --- | --- |
 | Профиль Баланс | есть | не трогает Lua Packet Rate / Telem |
-| Профиль Дальность | есть | TX boot: `RATE_LORA_2G4_50HZ` + `TLM_RATIO_1_16`; dynpower LQ boost min 70 (сток 50), power-down только при LQ≥99 (сток 95) |
+| Профиль Дальность | есть | TX boot: `RATE_LORA_2G4_50HZ` + `TLM_RATIO_1_16` (самый медленный общий LoRa SX1280↔LR1121; 25 Гц 2.4 у SX1280 нет). Dynpower: boost LQ≤80 (сток 50), drop-boost 15 (сток 20), step-up LQ≤90 (сток 85), power-down только при LQ≥99 (сток 95) |
 | Профиль Скорость | есть | TX boot: `RATE_LORA_2G4_500HZ` + `TLM_RATIO_1_64` (не FLRC) |
 | Приоритет RC vs MSP | есть | `tx_main.cpp` `SendRCdataToRF`: `gerda_should_defer_msp(uplink_LQ)` |
-| Telem backoff (слот TLM) | **нет** | `ExpressLRS_currTlmDenom` синхронизируется SYNC (`tx_main.cpp` `GenerateSyncPacketData` / `rx_main.cpp` `ProcessRfPacket_SYNC`); менять mid-flight без syncspam — не чистый хук. TODO Phase 4 |
+| Telem backoff (слот TLM) | **есть, только Дальность** | `gerda_tlm_backoff_ratio` → `UpdateTlmRatioEffective`; RX через SYNC `newTlmRatio`. LQ&lt;70 → 1:32, LQ&lt;50 → 1:64, выход LQ&gt;85. Не NO_TLM, не трогает MSP 1:2 |
 | Adaptive MCS | **нет** | риск рассинхрона SX1280↔LR1121 |
 | IA-FHSS | **soft denylist** | гистограмма RSSI/CRC; hops **не** меняются; LQ/AFC смягчение. Синхронный skip-map — не в эфире. `docs/FHSS.ru.md` |
-| Межпакетный FEC | **нет** | airtime |
+| Межпакетный FEC | **примитив, не в эфире** | XOR двух payload в `gerda_fec.*`. 50 Гц TOA ~10.8 мс / слот 20 мс — DVDA не влезает. Дизайн: `docs/RANGE_EXPERIMENTS.ru.md` |
 | CUSTOM_2640 | опция | **не** улучшает дальность на этом фронтенде |
+| Secure Link | default OFF | **не** нужен для фич дальности; для max-range тестов оставлять выкл |
 
 Lua-facing: отдельного пункта «Профиль Герда» в EdgeTX Lua нет (размер скрипта). Профиль живёт в Web UI; Lua по-прежнему показывает Packet Rate / Telem Ratio. После выбора Дальность/Скорость перезагрузка TX записывает rate/tlm в EEPROM-конфиг модели — дальше Lua их видит.
 
-`gerda_link_feature_enabled(CC_PRIORITY | IA_FHSS)` = 1; MCS / FEC = 0. Runtime «Умный FHSS»: `gerda_smart_fhss`.
+`gerda_link_feature_enabled(CC_PRIORITY | IA_FHSS)` = 1; MCS / FEC = 0 (FEC-примитив есть, эфир не меняем). Runtime «Умный FHSS»: `gerda_smart_fhss`. Честный A/B на ~30 км: [`docs/RANGE_EXPERIMENTS.ru.md`](RANGE_EXPERIMENTS.ru.md). Физика 1 Вт + одна антенна по-прежнему предел; цель — стабильнее край и скромные лишние км, не ×2.
 
 ## 6. Потоки данных
 
@@ -140,10 +143,13 @@ Web UI (Wi-Fi AP GerdaLRS RX/TX)
 - [x] Runtime ISM vs 2640 в options; синхронизация TX/RX (оба конца вручную).
 - [x] TX: RadioMaster Ranger Nano 2.4 (`radiomaster.tx_2400.ranger-nano`).
 - [x] Secure Link: спека, SHA-256/HMAC/HKDF, XOR-MAC в TX/RX, native-тесты, UI-флаг default OFF.
-- [x] Профили Баланс/Дальность/Скорость + MSP defer + dynpower RANGE.
+- [x] Профили Баланс/Дальность/Скорость + MSP defer + dynpower RANGE + TLM backoff.
 - [x] Умный FHSS: гистограмма + soft denylist (hops как у ELRS).
+- [x] XOR FEC-примитив + чеклист дальности (`docs/RANGE_EXPERIMENTS.ru.md`).
 - [ ] Доперевести длинные help-тексты PWM / Hardware pins.
 - [ ] Снять hardware.json с FlyFish 9624R и сравнить с `Generic C3 LR1121.json`.
-- [ ] Измерить RSSI/дальность на 2640 со штатной антенной (ожидается хуже).
-- [ ] Synced FHSS skip-map по TLM/MSP; epoch anti-replay; adaptive MCS.
+- [ ] Измерить RSSI/дальность на 2640 со штатной антенной (ожидается хуже; не часть range pack).
+- [ ] A/B Gerda vs сток на 25/30/35 км (железо, не этот PR).
+- [ ] Synced FHSS skip-map по TLM/MSP; epoch anti-replay; adaptive MCS; parity-пакет вместо TLM.
 - [ ] Не включать CUSTOM_2640, Secure и Smart FHSS в дефолтный `user_defines.txt`.
+- [ ] 750 / 900 МГц — отложено, не в этом пакете.

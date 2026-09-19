@@ -13,9 +13,12 @@
 - Русский Web UI (вкладки Модель/Опции/Wi‑Fi/Обновление) и таблица строк `src/html/i18n-ru.js`.
 - Выбор **ISM 2.4 / CUSTOM_2640** в Web UI (`gerda-2g4` в options.json); по умолчанию ISM.
 - **Gerda Secure Link** (по умолчанию ВЫКЛ): HMAC в CRC, тесты tamper/UID/ON↔OFF. [`docs/SECURITY.ru.md`](docs/SECURITY.ru.md).
-- Профили полёта в Web UI: **Баланс / Дальность / Скорость** (`gerda-profile`).
+- Профили полёта в Web UI: **Баланс / Дальность / Скорость** (`gerda-profile`). Дальность: 50 Гц + telem 1:16, липкий dynpower, backoff телеметрии на плохом LQ.
 - **Умный FHSS** (по умолчанию ВЫКЛ): гистограмма канала, soft denylist без смены hops. [`docs/FHSS.ru.md`](docs/FHSS.ru.md).
+- Чеклист A/B на ~30 км (эта пара 2.4, не 750/900 и не 2640): [`docs/RANGE_EXPERIMENTS.ru.md`](docs/RANGE_EXPERIMENTS.ru.md).
 - Брендинг Герда / GerdaLRS. Пароль Wi‑Fi AP: `expresslrs`.
+
+**Честно про дальность:** сток на Ranger Nano 1 Вт + FlyFish (одна антенна LR1121) уже даёт порядка 30 км. GerdaLRS целится в более стабильный край и скромные лишние километры на **том же** 2.4, не в магическое ×2. CUSTOM_2640 дальность не увеличивает. 750/900 МГц в этом пакете не трогаем.
 
 ## Честный changelog vs ExpressLRS
 
@@ -25,9 +28,10 @@
 | Secure ON | Gerda↔Gerda, HMAC в CRC, drop на fail | epoch против wrap-replay |
 | FHSS | флаг выкл = сток; Умный FHSS = гистограмма + LQ/AFC, hops как ELRS | синхронный skip-map по эфиру |
 | Профили | TX при загрузке: 50 Гц 1:16 / 500 Гц 1:64; Баланс = Lua | отдельный пункт Lua (пока Web UI) |
-| Dynpower | Дальность: boost с LQ&lt;70 (сток 50), не снижать мощность пока LQ&lt;99 | adaptive MCS |
-| MSP | при низком LQ слот отдаётся RC (`SendRCdataToRF`) | telem-slot steal |
-| CUSTOM_2640 | опция есть; **не** дальность | измерение на железе |
+| Dynpower | Дальность: boost с LQ≤80 (сток 50), drop 15 (сток 20), step-up 90, не снижать пока LQ&lt;99 | adaptive MCS |
+| MSP / TLM | низкий LQ → MSP defer; Дальность: TLM 1:32/1:64 через SYNC | parity-пакет вместо TLM |
+| FEC | XOR-примитив есть, **не в эфире** (50 Гц TOA) | опциональный parity slot |
+| CUSTOM_2640 | опция есть; **не** дальность | не использовать в range A/B |
 | Бинарники релиза | не публикуются этим PR | после прошивки пары |
 
 ## Оборудование
@@ -79,9 +83,9 @@ Lua на аппаратуре показывает **RM Ranger Nano**. Корп�
 1. **Русский Web UI** — таблица `src/html/i18n-ru.js`; дальше доперевести длинные help-тексты PWM/Hardware.
 2. **Домен** — ISM 2.4 по умолчанию; CUSTOM_2640 в Web UI (оба конца должны совпадать). Не обещает дальность.
 3. **Безопасность** — Secure Link спроектирован и вшит в TX pack / RX unpack за флагом. Default OFF. См. [`docs/SECURITY.ru.md`](docs/SECURITY.ru.md).
-4. **Дальность/скорость** — профили + MSP-priority + dynpower на Дальности. Умный FHSS: гистограмма, hops не ломаем. Adaptive MCS / synced skip — дальше.
+4. **Дальность/скорость** — профили + MSP-priority + dynpower + telem backoff на Дальности. Умный FHSS: гистограмма, hops не ломаем. A/B ~30 км: [`docs/RANGE_EXPERIMENTS.ru.md`](docs/RANGE_EXPERIMENTS.ru.md). Adaptive MCS / synced skip / on-air FEC — дальше. 750/900 — отложено.
 
-Архитектура: [`docs/ARCHITECTURE.ru.md`](docs/ARCHITECTURE.ru.md). Безопасность: [`docs/SECURITY.ru.md`](docs/SECURITY.ru.md). FHSS: [`docs/FHSS.ru.md`](docs/FHSS.ru.md).
+Архитектура: [`docs/ARCHITECTURE.ru.md`](docs/ARCHITECTURE.ru.md). Безопасность: [`docs/SECURITY.ru.md`](docs/SECURITY.ru.md). FHSS: [`docs/FHSS.ru.md`](docs/FHSS.ru.md). Эксперименты дальности: [`docs/RANGE_EXPERIMENTS.ru.md`](docs/RANGE_EXPERIMENTS.ru.md).
 
 ## Сборка
 
@@ -151,7 +155,7 @@ Upstream README ExpressLRS можно сравнить с https://github.com/Exp
 
 ## English
 
-GerdaLRS is a GPL-3.0 ExpressLRS derivative (upstream `7684347ee697b3fa4318f99a02b6ae6f5d703307`). Focus: Russian Web UI, ISM 2.4 vs CUSTOM_2640, Gerda Secure Link (default OFF, HMAC-in-CRC), flight profiles, smart FHSS soft-denylist (default OFF; hop order unchanged). Stock ELRS air when Gerda flags are off.
+GerdaLRS is a GPL-3.0 ExpressLRS derivative (upstream `7684347ee697b3fa4318f99a02b6ae6f5d703307`). Focus: Russian Web UI, ISM 2.4 vs CUSTOM_2640, Gerda Secure Link (default OFF, HMAC-in-CRC), flight profiles, smart FHSS soft-denylist (default OFF; hop order unchanged). Stock ELRS air when Gerda flags are off. Range work targets a more stable edge and modest extra km on the current 2.4 pair (Ranger Nano 1 W + single-antenna FlyFish), not a 2× miracle and not a 750/900/2640 frequency-shift win. See `docs/RANGE_EXPERIMENTS.ru.md`.
 
 **v1 hardware pair**
 
@@ -169,6 +173,7 @@ Non-ISM frequencies (including ~2640 MHz) are the operator’s legal responsibil
 - [x] Спека + примитивы Secure Link (KDF/HMAC/anti-replay) и хуки TX/RX за флагом.
 - [x] Профили Баланс/Дальность/Скорость в Web UI.
 - [x] Умный FHSS (гистограмма, hops не меняем) + расширенные native-тесты Secure Link.
+- [x] Range pack: TLM backoff, липкий dynpower, XOR FEC-примитив, `docs/RANGE_EXPERIMENTS.ru.md`.
 - [ ] Доперевести длинные help-тексты PWM/Hardware pins.
 - [ ] Снять `hardware.json` с живого FlyFish 9624R.
 - [ ] Прошивка пары на железе (не в этом раунде).

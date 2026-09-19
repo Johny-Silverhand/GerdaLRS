@@ -7,3 +7,4 @@
 #include "gerda_security.h"
 #include "gerda_link.h"
 #include "gerda_fhss.h"
+#include "gerda_fec.h"

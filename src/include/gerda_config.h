@@ -31,3 +31,8 @@
 //
 // Smart FHSS factory default OFF. Runtime: options.json "gerda-fhss" /
 // Web UI «Умный FHSS». Does not rewrite the hop sequence. See docs/FHSS.ru.md.
+//
+// Flight profile runtime: options.json "gerda-profile" (0 Баланс / 1 Дальность /
+// 2 Скорость). Дальность is the long-range experiment path for the v1 2.4 pair
+// (50 Hz + telem 1:16 + sticky dynpower + TLM backoff). See docs/RANGE_EXPERIMENTS.ru.md.
+// 750 MHz / 900 MHz domains are not selected by this header.

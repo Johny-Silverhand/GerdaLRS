@@ -6,6 +6,7 @@
 #include "gerda_sha256.h"
 #include "gerda_link.h"
 #include "gerda_fhss.h"
+#include "gerda_fec.h"
 #include "common.h"
 
 static void bytes_from_hex(const char *hex, uint8_t *out, size_t n)
@@ -160,11 +161,14 @@ void test_ota_mac_xor_roundtrip_and_flag(void)
 void test_flight_profiles(void)
 {
     uint8_t rate = 0xFF, tlm = 0xFF;
+    gerda_tlm_backoff_reset();
     gerda_profile = GERDA_PROFILE_BALANCE;
     TEST_ASSERT_EQUAL(0, gerda_profile_rate_tlm(gerda_profile, &rate, &tlm));
     TEST_ASSERT_EQUAL_STRING("Баланс", gerda_profile_name_ru(0));
     TEST_ASSERT_EQUAL_UINT8(50, gerda_dynpower_lq_boost_min());
     TEST_ASSERT_EQUAL_UINT8(95, gerda_dynpower_lq_thresh_dn());
+    TEST_ASSERT_EQUAL_UINT8(85, gerda_dynpower_lq_thresh_up());
+    TEST_ASSERT_EQUAL_UINT8(20, gerda_dynpower_lq_drop_boost());
     TEST_ASSERT_EQUAL(0, gerda_should_defer_msp(0));
     TEST_ASSERT_EQUAL(0, gerda_should_defer_msp(50));
     TEST_ASSERT_EQUAL(1, gerda_should_defer_msp(30));
@@ -174,8 +178,10 @@ void test_flight_profiles(void)
     TEST_ASSERT_EQUAL_UINT8((uint8_t)TLM_RATIO_1_16, tlm);
     TEST_ASSERT_EQUAL_STRING("Дальность", gerda_profile_name_ru(GERDA_PROFILE_RANGE));
     gerda_profile = GERDA_PROFILE_RANGE;
-    TEST_ASSERT_EQUAL_UINT8(70, gerda_dynpower_lq_boost_min());
+    TEST_ASSERT_EQUAL_UINT8(80, gerda_dynpower_lq_boost_min());
     TEST_ASSERT_EQUAL_UINT8(99, gerda_dynpower_lq_thresh_dn());
+    TEST_ASSERT_EQUAL_UINT8(90, gerda_dynpower_lq_thresh_up());
+    TEST_ASSERT_EQUAL_UINT8(15, gerda_dynpower_lq_drop_boost());
     TEST_ASSERT_EQUAL(1, gerda_should_defer_msp(50));
     TEST_ASSERT_EQUAL(0, gerda_should_defer_msp(80));
 
@@ -193,6 +199,72 @@ void test_flight_profiles(void)
     TEST_ASSERT_EQUAL(0, gerda_link_feature_enabled(GERDA_LINK_INTERPACKET_FEC));
 
     gerda_profile = GERDA_PROFILE_BALANCE;
+    gerda_tlm_backoff_reset();
+}
+
+void test_tlm_backoff_range_hysteresis(void)
+{
+    gerda_tlm_backoff_reset();
+    gerda_profile = GERDA_PROFILE_BALANCE;
+    TEST_ASSERT_EQUAL_UINT8((uint8_t)TLM_RATIO_1_16,
+        gerda_tlm_backoff_ratio((uint8_t)TLM_RATIO_1_16, 40, -5));
+    TEST_ASSERT_EQUAL_UINT8(0, gerda_tlm_backoff_level());
+
+    gerda_profile = GERDA_PROFILE_RANGE;
+    TEST_ASSERT_EQUAL_UINT8((uint8_t)TLM_RATIO_1_16,
+        gerda_tlm_backoff_ratio((uint8_t)TLM_RATIO_1_16, 0, 0)); // no TLM yet
+    TEST_ASSERT_EQUAL_UINT8((uint8_t)TLM_RATIO_NO_TLM,
+        gerda_tlm_backoff_ratio((uint8_t)TLM_RATIO_NO_TLM, 10, -10));
+    TEST_ASSERT_EQUAL_UINT8((uint8_t)TLM_RATIO_1_16,
+        gerda_tlm_backoff_ratio((uint8_t)TLM_RATIO_1_16, 90, 6));
+    TEST_ASSERT_EQUAL_UINT8(0, gerda_tlm_backoff_level());
+
+    TEST_ASSERT_EQUAL_UINT8((uint8_t)TLM_RATIO_1_32,
+        gerda_tlm_backoff_ratio((uint8_t)TLM_RATIO_1_16, 65, 4));
+    TEST_ASSERT_EQUAL_UINT8(1, gerda_tlm_backoff_level());
+    // hysteresis: 80 is not enough to exit
+    TEST_ASSERT_EQUAL_UINT8((uint8_t)TLM_RATIO_1_32,
+        gerda_tlm_backoff_ratio((uint8_t)TLM_RATIO_1_16, 80, 2));
+    TEST_ASSERT_EQUAL_UINT8((uint8_t)TLM_RATIO_1_64,
+        gerda_tlm_backoff_ratio((uint8_t)TLM_RATIO_1_16, 40, -4));
+    TEST_ASSERT_EQUAL_UINT8(2, gerda_tlm_backoff_level());
+    TEST_ASSERT_EQUAL_UINT8((uint8_t)TLM_RATIO_1_16,
+        gerda_tlm_backoff_ratio((uint8_t)TLM_RATIO_1_16, 90, 3));
+    TEST_ASSERT_EQUAL_UINT8(0, gerda_tlm_backoff_level());
+
+    // already 1:64: backoff must not densify
+    gerda_tlm_backoff_reset();
+    TEST_ASSERT_EQUAL_UINT8((uint8_t)TLM_RATIO_1_64,
+        gerda_tlm_backoff_ratio((uint8_t)TLM_RATIO_1_64, 30, -8));
+
+    gerda_profile = GERDA_PROFILE_BALANCE;
+    gerda_tlm_backoff_reset();
+}
+
+void test_xor_fec_recover_and_window(void)
+{
+    uint8_t a[8] = {0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70, 0x80};
+    uint8_t b[8] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
+    uint8_t p[8];
+    uint8_t rec[8];
+    gerda_fec_recovery_reset();
+    gerda_fec_xor(a, b, p, 8);
+    TEST_ASSERT_EQUAL(1, gerda_fec_recover(a, p, rec, 8));
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(b, rec, 8);
+    TEST_ASSERT_EQUAL(1, gerda_fec_recover(b, p, rec, 8));
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(a, rec, 8);
+    TEST_ASSERT_EQUAL_UINT32(2, gerda_fec_recovery_count());
+    TEST_ASSERT_EQUAL(0, gerda_fec_recover(0, p, rec, 8));
+
+    gerda_fec_window_reset();
+    TEST_ASSERT_EQUAL(0, gerda_fec_parity_ready());
+    gerda_fec_window_push(a, 8);
+    TEST_ASSERT_EQUAL(0, gerda_fec_parity_ready());
+    gerda_fec_window_push(b, 8);
+    TEST_ASSERT_EQUAL(1, gerda_fec_parity_ready());
+    TEST_ASSERT_EQUAL(8, gerda_fec_parity_len());
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(p, gerda_fec_parity(), 8);
+    gerda_fec_recovery_reset();
 }
 
 void setUp(void) {}
@@ -322,6 +394,9 @@ void test_smart_fhss_histogram_and_diversity(void)
     TEST_ASSERT_EQUAL(1, gerda_fhss_is_denylisted(5));
     TEST_ASSERT_EQUAL(0, gerda_fhss_is_denylisted(40));
     TEST_ASSERT_EQUAL(1, gerda_fhss_skip_freq_corr(3));
+    TEST_ASSERT_TRUE(gerda_fhss_hits(3) >= 1);
+    TEST_ASSERT_TRUE(gerda_fhss_misses(3) >= 8);
+    TEST_ASSERT_TRUE(gerda_fhss_miss_rate(3) >= GERDA_FHSS_DENY_SCORE);
     TEST_ASSERT_TRUE(gerda_fhss_denylist_count() >= 2);
     TEST_ASSERT_TRUE(gerda_fhss_denylist_count() <= 20);
 
@@ -364,6 +439,8 @@ int main(int argc, char **argv)
     RUN_TEST(test_mac_payload_tamper_and_uid_mismatch);
     RUN_TEST(test_secure_on_off_interop);
     RUN_TEST(test_flight_profiles);
+    RUN_TEST(test_tlm_backoff_range_hysteresis);
+    RUN_TEST(test_xor_fec_recover_and_window);
     RUN_TEST(test_smart_fhss_histogram_and_diversity);
     return UNITY_END();
 }

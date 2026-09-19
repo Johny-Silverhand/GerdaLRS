@@ -25,7 +25,7 @@ window.GERDA_I18N_RU = {
   "Smart FHSS": "Умный FHSS",
   "Flight profile": "Профиль полёта",
   "Profile Balance": "Баланс (как в Lua)",
-  "Profile Range": "Дальность (50 Гц, телеметрия 1:16)",
+  "Profile Range": "Дальность (50 Гц, телеметрия 1:16, backoff)",
   "Profile Speed": "Скорость (500 Гц, телеметрия 1:64)",
   "Firmware Rev. ": "Ревизия прошивки ",
   "Import/Export": "Импорт/экспорт",

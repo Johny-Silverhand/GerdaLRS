@@ -6,25 +6,26 @@
 
 // Range / speed layer for the v1 pair (SX1280 TX Ranger Nano + LR1121 RX FlyFish).
 // Cross-chip: standard 2.4 LoRa rates only. DK500/K1000 are out of scope for this TX.
+// Lowest shared LoRa rate on both chips is 50 Hz (no 2.4 25 Hz table on SX1280).
 //
 // Implemented:
 //   - Flight profiles (Web UI «Профиль полёта», options.json "gerda-profile"):
 //       0 Баланс  — do not override Lua Packet Rate / Telem Ratio
-//       1 Дальность — 50 Hz + Telem 1:16, earlier dynpower boost, MSP defer under low LQ
+//       1 Дальность — 50 Hz + Telem 1:16, sticky dynpower, MSP defer, TLM backoff
 //       2 Скорость  — 500 Hz + Telem 1:64 (still standard LoRa 2.4, not FLRC/FSK)
 //   - Control-channel priority: skip MSP uplink when LQ is poor (tx_main SendRCdataToRF)
-//   - Dynpower: RANGE raises the absolute LQ boost-to-max threshold (50 → 70) and
-//     makes power-down require LQ 99 instead of 95. Stock path unchanged on Баланс.
+//   - Dynpower RANGE: boost-to-max at LQ 80 (stock 50), power-down only at LQ 99
+//     (stock 95), LQ step-up at 90 (stock 85), drop-boost 15 (stock 20)
+//   - Telem backoff (RANGE only): when LQ/SNR poor, SYNC newTlmRatio 1:32 then 1:64
+//     so RC occupies more slots. Never NO_TLM, never overrides MSP 1:2 boost.
 //
-// Not implemented (Phase 4 — no fake hooks):
-//   - Interference-aware FHSS: histogram + RX/TX soft denylist (same hop
-//     order). Synced skip-map is not on the air. See docs/FHSS.ru.md.
+// Not implemented (honest):
 //   - Adaptive MCS / rate switching from live LQ (would desync SX1280↔LR1121)
-//   - Inter-packet FEC
-//   - Telem-slot steal (ExpressLRS_currTlmDenom is synced via SYNC; changing it
-//     mid-flight without a syncspam is not a clean mixer change)
+//   - On-air inter-packet FEC: 50 Hz TOA ~10.8 ms in a 20 ms slot; DVDA does not
+//     fit. XOR primitive lives in gerda_fec.* for a later parity packet.
 //
 // CUSTOM_2640 does not improve range on this hardware (RF matching ~2.4–2.5 GHz).
+// Secure Link is independent and must stay OFF for max-range flight tests.
 
 #ifdef __cplusplus
 extern "C" {
@@ -55,13 +56,24 @@ int gerda_profile_rate_tlm(uint8_t profile, uint8_t *rate_enum, uint8_t *tlm);
 const char *gerda_profile_name_ru(uint8_t profile);
 
 // Dynpower vs stock ELRS (dynpower.cpp DYNPOWER_LQ_BOOST_THRESH_MIN = 50,
-// DYNPOWER_LQ_THRESH_DN = 95). RANGE holds max power sooner at the edge.
+// DYNPOWER_LQ_THRESH_DN = 95, DYNPOWER_LQ_THRESH_UP = 85,
+// DYNPOWER_LQ_BOOST_THRESH_DIFF = 20). RANGE holds max power sooner at the edge.
 uint8_t gerda_dynpower_lq_boost_min(void);
 uint8_t gerda_dynpower_lq_thresh_dn(void);
+uint8_t gerda_dynpower_lq_thresh_up(void);
+uint8_t gerda_dynpower_lq_drop_boost(void);
 
 // Defer MSP/airport-unrelated uplink so RC occupies the slot.
 // uplink_lq == 0 means "no TLM yet" — do not defer (would starve bind/config).
 int gerda_should_defer_msp(uint8_t uplink_lq);
+
+// RANGE-only: sparsify configured TLM_RATIO_* when uplink LQ/SNR is poor.
+// Hysteresis enter LQ<70 (or LQ<85 and SNR<0 dB), deep LQ<50, exit LQ>85.
+// Never returns NO_TLM / STD / DISARMED. Never denser than configured.
+// Floor is 1:64 so dynpower still gets some TLM. uplink_lq==0 → no change.
+uint8_t gerda_tlm_backoff_ratio(uint8_t configured_tlm, uint8_t uplink_lq, int8_t snr_db);
+void gerda_tlm_backoff_reset(void);
+uint8_t gerda_tlm_backoff_level(void); // 0 off, 1 = 1:32, 2 = 1:64
 
 #ifdef __cplusplus
 }

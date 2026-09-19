@@ -105,16 +105,22 @@
 						<div class="mui-select">
 							<select id="gerda-profile" name="gerda-profile">
 								<option value="0" data-i18n="Profile Balance">Баланс (как в Lua)</option>
-								<option value="1" data-i18n="Profile Range">Дальность (50 Гц, телеметрия 1:16)</option>
+								<option value="1" data-i18n="Profile Range">Дальность (50 Гц, телеметрия 1:16, backoff)</option>
 								<option value="2" data-i18n="Profile Speed">Скорость (500 Гц, телеметрия 1:64)</option>
 							</select>
 							<label for="gerda-profile" data-i18n="Flight profile">Профиль полёта</label>
 						</div>
 						<p style="font-size:13px;line-height:1.4;">
 							<b>Баланс</b> не трогает Packet Rate / Telem Ratio из Lua.
-							<b>Дальность</b> и <b>Скорость</b> на TX при загрузке выставляют рекомендованные rate/telem (стандартный LoRa 2.4; не FLRC и не DK500).
+							<b>Дальность</b> на TX при загрузке: 50 Гц (самый медленный общий LoRa SX1280↔LR1121) и телеметрия 1:16;
+							dynpower держит высокую мощность на краю (boost с LQ&lt;80, снижение только при LQ≥99);
+							при плохом LQ/SNR телеметрия сама редеет до 1:32 / 1:64, MSP уступает слот RC.
+							<b>Скорость</b>: 500 Гц + 1:64 (стандартный LoRa 2.4, не FLRC и не DK500).
+							Для тестов дальности оставьте <b>Защищённый линк выкл</b>. Умный FHSS — по желанию в загруженном 2.4, hops не меняет.
+							CUSTOM_2640 <b>не</b> эксперимент на дальность на этом железе.
 							После загрузки Lua всё ещё может переопределить rate до следующей перезагрузки.
 						</p>
+						<pre id="gerda-range-stats" style="display:none;font-size:12px;line-height:1.35;white-space:pre-wrap;background:#111;color:#ddd;padding:8px;border-radius:4px;"></pre>
 						<div class="mui-textfield">
 							<input size='3' id='wifi-on-interval' name='wifi-on-interval' type='text' placeholder="Выкл"/>
 							<label for="wifi-on-interval" data-i18n="WiFi auto-on interval">Интервал авто-включения Wi‑Fi, сек (пусто = выкл)</label>

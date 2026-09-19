@@ -135,8 +135,8 @@ void DynamicPower_Update(uint32_t now)
   uint32_t lq_avg = dynpower_mavg_lq;
   int32_t lq_diff = lq_avg - lq_current;
   dynpower_mavg_lq.add(lq_current);
-  // if LQ drops quickly (DYNPOWER_LQ_BOOST_THRESH_DIFF) or critically low below DYNPOWER_LQ_BOOST_THRESH_MIN, immediately boost to the configured max power.
-  if (lq_diff >= DYNPOWER_LQ_BOOST_THRESH_DIFF || lq_current <= gerda_dynpower_lq_boost_min())
+  // if LQ drops quickly (stock 20 / RANGE 15) or critically low, immediately boost to the configured max power.
+  if (lq_diff >= gerda_dynpower_lq_drop_boost() || lq_current <= gerda_dynpower_lq_boost_min())
   {
       DynamicPower_SetToConfigPower();
       return;
@@ -190,7 +190,7 @@ void DynamicPower_Update(uint32_t now)
   } // ^^ if SNR-based
 
   // If instant LQ is low, but the SNR/RSSI did nothing, inc power by one step
-  if ((powerHeadroom > 0) && (startPowerLevel == POWERMGNT::currPower()) && (lq_current <= DYNPOWER_LQ_THRESH_UP))
+  if ((powerHeadroom > 0) && (startPowerLevel == POWERMGNT::currPower()) && (lq_current <= gerda_dynpower_lq_thresh_up()))
   {
     DBGLN("+power (lq)");
     POWERMGNT::incPower();

@@ -1,7 +1,7 @@
 {
   "name": "GERDA",
   "version": "0.1.0",
-  "description": "GerdaLRS modules: i18n, 2.4/2640 domain, Secure Link crypto, flight profiles. Stock ELRS when flags are off.",
+  "description": "GerdaLRS modules: i18n, 2.4/2640 domain, Secure Link crypto, flight profiles, smart FHSS, XOR FEC primitive. Stock ELRS when flags are off.",
   "keywords": "expresslrs, gerdalrs",
   "license": "GPL-3.0-or-later",
   "frameworks": "*",

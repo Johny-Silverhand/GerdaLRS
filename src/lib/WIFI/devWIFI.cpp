@@ -47,6 +47,10 @@
 
 #include "config.h"
 
+#include "gerda_fhss.h"
+#include "gerda_fec.h"
+#include "gerda_link.h"
+
 #if defined(RADIO_LR1121)
 #include "lr1121.h"
 #endif
@@ -396,6 +400,28 @@ static void GetConfiguration(AsyncWebServerRequest *request)
     json["config"]["lua_name"] = device_name;
     json["config"]["reg_domain"] = FHSSgetRegulatoryDomain();
     json["config"]["uidtype"] = GetConfigUidType(json);
+
+    json["gerda"]["profile"] = gerda_profile;
+    json["gerda"]["fec_recoveries"] = gerda_fec_recovery_count();
+    json["gerda"]["fhss_deny"] = gerda_fhss_denylist_count();
+    json["gerda"]["fhss_on"] = gerda_smart_fhss ? 1 : 0;
+    JsonArray miss = json["gerda"]["fhss_miss"].to<JsonArray>();
+    uint8_t nch = gerda_fhss_channel_count();
+    if (nch > GERDA_FHSS_MAX_CH) {
+      nch = GERDA_FHSS_MAX_CH;
+    }
+    for (uint8_t ch = 0; ch < nch; ch++) {
+      uint8_t rate = gerda_fhss_miss_rate(ch);
+      if (rate == 255) {
+        continue;
+      }
+      JsonObject row = miss.add<JsonObject>();
+      row["ch"] = ch;
+      row["miss"] = rate;
+      row["hits"] = gerda_fhss_hits(ch);
+      row["crc_fail"] = gerda_fhss_misses(ch);
+      row["deny"] = gerda_fhss_is_denylisted(ch) ? 1 : 0;
+    }
   }
 
   response->setLength();

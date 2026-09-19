@@ -426,6 +426,16 @@ expresslrs_tlm_ratio_e ICACHE_RAM_ATTR UpdateTlmRatioEffective()
     retVal = ratioConfigured;
   }
 
+  // RANGE: sparsify TLM under poor LQ/SNR so RC wins the slot. RX learns the
+  // new denom via SYNC newTlmRatio. MSP 1:2 and DISARMED/NO_TLM are untouched.
+  if (retVal > TLM_RATIO_NO_TLM && retVal < TLM_RATIO_DISARMED && !MspSender.IsActive())
+  {
+    retVal = (expresslrs_tlm_ratio_e)gerda_tlm_backoff_ratio(
+        (uint8_t)retVal,
+        CRSF::LinkStatistics.uplink_Link_quality,
+        CRSF::LinkStatistics.uplink_SNR);
+  }
+
   if (updateTelemDenom)
   {
     uint8_t newTlmDenom = TLMratioEnumToValue(retVal);
