@@ -8,6 +8,25 @@ import BFinitPassthrough
 import ETXinitPassthrough
 import UnifiedConfiguration
 
+def _gerda_dedupe_nimble():
+    deps = os.path.join(env["PROJECT_LIBDEPS_DIR"], env["PIOENV"])
+    if not os.path.isdir(deps):
+        return
+    nimbles = sorted(
+        p for p in os.listdir(deps)
+        if p == "NimBLE-Arduino" or p.startswith("NimBLE-Arduino@")
+    )
+    if len(nimbles) <= 1:
+        return
+    keep = next((p for p in nimbles if p.startswith("NimBLE-Arduino@")), nimbles[0])
+    for p in nimbles:
+        if p != keep:
+            victim = os.path.join(deps, p)
+            print("GerdaLRS: removing duplicate library %s (keep %s)" % (p, keep))
+            shutil.rmtree(victim)
+
+_gerda_dedupe_nimble()
+
 def add_target_uploadoption(name: str, desc: str) -> None:
     # Add an upload target 'uploadforce' that forces update if target mismatch
     # This must be called after UPLOADCMD is set
