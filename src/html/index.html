@@ -1,0 +1,437 @@
+@@require(PLATFORM, VERSION, isTX, hasSubGHz, is8285, chip)
+<!DOCTYPE HTML>
+<html lang="ru">
+
+<head>
+	<title>GerdaLRS — Герда</title>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<link rel="stylesheet" href="elrs.css" />
+</head>
+
+<body>
+	<header class="mui-appbar mui--z1 mui--text-center elrs-header">
+		@@include("logo-template.svg")
+		<h1><b>Герда</b> / GerdaLRS</h1>
+		<span id="product_name"></span><br/>
+		<b data-i18n="Firmware Rev. ">Ревизия прошивки </b>@@{VERSION} <span id="reg_domain"></span>
+	</header>
+	<br/>
+	<div class="mui-container-fluid">
+		<div class="mui-panel mui-col-sm-10 mui-col-sm-offset-1">
+
+			<ul class="mui-tabs__bar mui-tabs__bar--justified">
+@@if not isTX:
+				<li><a data-mui-toggle="tab" data-mui-controls="pane-justified-3" data-i18n="Model">Модель</a></li>
+@@end
+				<li><a data-mui-toggle="tab" data-mui-controls="pane-justified-1" data-i18n="Options">Опции</a></li>
+				<li><a id="network-tab" data-mui-toggle="tab" data-mui-controls="pane-justified-4" data-i18n="WiFi">Wi‑Fi</a></li>
+@@if isTX:
+				<li id="button-tab"><a data-mui-toggle="tab" data-mui-controls="pane-justified-3" data-i18n="Buttons">Кнопки</a></li>
+@@end
+				<li><a data-mui-toggle="tab" data-mui-controls="pane-justified-2" data-i18n="Update">Обновление</a></li>
+			</ul>
+
+			<div class="mui-tabs__pane" id="pane-justified-1">
+				<div class="mui-panel">
+					<h2 data-i18n="Runtime Options">Параметры</h2>
+					Эта форма <b>переопределяет</b> опции, заданные при прошивке. Изменения сохраняются после перезагрузки, но <b>сбрасываются</b> при новой прошивке.
+@@if isTX:
+					Примечание: фраза привязки <b>не</b> запоминается, это временное поле для расчёта UID.
+					<br/><br/>
+					<div class="mui-textfield">
+						<input type="text" id="phrase" name="phrase" placeholder="Фраза привязки" data-i18n-placeholder="Binding Phrase" />
+						<label for="phrase" data-i18n="Binding Phrase">Фраза привязки</label>
+					</div>
+					<form id='upload_options' method='POST' action="/options">
+						<div class="mui-textfield">
+							<label for='uid'><span id="uid-text"></span></label>
+							<span class="badge" id="uid-type"></span>
+							<input size='40' id='uid' name='uid' type='text' class='array' readonly/>
+						</div>
+@@else:
+					<br/><br/>
+					<form id='upload_options' method='POST' action="/options">
+@@end
+@@if hasSubGHz:
+						<div class="mui-select">
+							<select id='domain' name='domain'>
+								<option value='0'>AU915</option>
+								<option value='1'>FCC915</option>
+								<option value='2'>EU868</option>
+								<option value='3'>IN866</option>
+								<option value='4'>AU433</option>
+								<option value='5'>EU433</option>
+								<option value='6'>US433</option>
+								<option value='7'>US433-Wide</option>
+							</select>
+							<label for="domain" data-i18n="Regulatory domain">Регуляторный домен (900 МГц)</label>
+						</div>
+@@end
+@@if chip != 'SX127X':
+						<div class="mui-select">
+							<select id="gerda-2g4" name="gerda-2g4">
+								<option value="0" data-i18n="ISM 2.4 GHz">ISM 2.4 ГГц (2400–2480)</option>
+								<option value="1" data-i18n="CUSTOM_2640">CUSTOM_2640 (~2640 МГц, не ISM)</option>
+							</select>
+							<label for="gerda-2g4" data-i18n="2.4 / 2640 band">Диапазон 2.4 / 2640</label>
+						</div>
+						<p style="font-size:13px;line-height:1.4;">
+							Оба конца линка (TX и RX) должны использовать один и тот же диапазон, иначе связи не будет.
+							CUSTOM_2640 — <b>не ISM</b>: лицензии и закон — ваша ответственность.
+							Фронтенд 2.4 ГГц (FlyFish 9624R, Ranger Nano) согласован примерно на 2.4–2.5 ГГц; на ~2640 МГц дальность обычно падает.
+							После сохранения нужна перезагрузка.
+						</p>
+@@end
+						<div class="mui-checkbox">
+							<input id="gerda-secure" name="gerda-secure" type="checkbox"/>
+							<label for="gerda-secure" data-i18n="Gerda Secure Link">Защищённый линк Gerda</label>
+						</div>
+						<p style="font-size:13px;line-height:1.4;">
+							По умолчанию <b>выкл</b> — поведение как у стокового ExpressLRS (совместимость с чужим TX/RX).
+							Если включить, HMAC кладётся в поле CRC (0 доп. байт в эфире); оба конца должны быть GerdaLRS с одной bind-phrase.
+							Сток ELRS с этой опцией <b>не</b> соединится. Режим bind остаётся стоковым.
+						</p>
+						<div class="mui-checkbox">
+							<input id="gerda-fhss" name="gerda-fhss" type="checkbox"/>
+							<label for="gerda-fhss" data-i18n="Smart FHSS">Умный FHSS</label>
+						</div>
+						<p style="font-size:13px;line-height:1.4;">
+							По умолчанию <b>выкл</b> — hop-таблица как у ExpressLRS (одинаковая на TX и RX).
+							Если включить, приёмник ведёт гистограмму RSSI/CRC по каналам и <b>не переписывает</b> последовательность:
+							шумные каналы не портят LQ и не крутят AFC, но радио всё равно на них ходит (иначе линк разъедется).
+							Это не когнитивный FHSS с общим чёрным списком по эфиру.
+						</p>
+						<div class="mui-select">
+							<select id="gerda-profile" name="gerda-profile">
+								<option value="0" data-i18n="Profile Balance">Баланс (как в Lua)</option>
+								<option value="1" data-i18n="Profile Range">Дальность (50 Гц, телеметрия 1:16, backoff)</option>
+								<option value="2" data-i18n="Profile Speed">Скорость (500 Гц, телеметрия 1:64)</option>
+							</select>
+							<label for="gerda-profile" data-i18n="Flight profile">Профиль полёта</label>
+						</div>
+						<p style="font-size:13px;line-height:1.4;">
+							<b>Баланс</b> не трогает Packet Rate / Telem Ratio из Lua.
+							<b>Дальность</b> на TX при загрузке: 50 Гц (самый медленный общий LoRa SX1280↔LR1121) и телеметрия 1:16;
+							dynpower держит высокую мощность на краю (boost с LQ&lt;80, снижение только при LQ≥99);
+							при плохом LQ/SNR телеметрия сама редеет до 1:32 / 1:64, MSP уступает слот RC.
+							<b>Скорость</b>: 500 Гц + 1:64 (стандартный LoRa 2.4, не FLRC и не DK500).
+							Для тестов дальности оставьте <b>Защищённый линк выкл</b>. Умный FHSS — по желанию в загруженном 2.4, hops не меняет.
+							CUSTOM_2640 <b>не</b> эксперимент на дальность на этом железе.
+							После загрузки Lua всё ещё может переопределить rate до следующей перезагрузки.
+						</p>
+						<pre id="gerda-range-stats" style="display:none;font-size:12px;line-height:1.35;white-space:pre-wrap;background:#111;color:#ddd;padding:8px;border-radius:4px;"></pre>
+						<div class="mui-textfield">
+							<input size='3' id='wifi-on-interval' name='wifi-on-interval' type='text' placeholder="Выкл"/>
+							<label for="wifi-on-interval" data-i18n="WiFi auto-on interval">Интервал авто-включения Wi‑Fi, сек (пусто = выкл)</label>
+						</div>
+@@if isTX:
+						<div class="mui-textfield">
+							<input size='5' id='tlm-interval' name='tlm-interval' type='text'/>
+							<label for="tlm-interval" data-i18n="TLM report interval">Интервал телеметрии (мс)</label>
+						</div>
+						<div class="mui-textfield">
+							<input size='3' id='fan-runtime' name='fan-runtime' type='text'/>
+							<label for="fan-runtime" data-i18n="Fan runtime">Время работы вентилятора (с)</label>
+						</div>
+						<div class="mui-checkbox">
+							<input id='is-airport' name='is-airport' type='checkbox'/>
+							<label for="is-airport" data-i18n="Use as AirPort Serial device">Режим AirPort (прозрачный UART)</label>
+						</div>
+						<div class="mui-textfield">
+							<input size='7' id='airport-uart-baud' name='airport-uart-baud' type='text'/>
+							<label for="airport-uart-baud" data-i18n="AirPort UART baud">Скорость UART AirPort</label>
+						</div>
+@@else:
+						<div id="baud-config" class="mui-textfield"  style="display: block;">
+							<input size='7' id='rcvr-uart-baud' name='rcvr-uart-baud' type='text'/>
+							<label for="rcvr-uart-baud" data-i18n="UART baud">Скорость UART</label>
+						</div>
+						<div class="mui-checkbox">
+							<input id='lock-on-first-connection' name='lock-on-first-connection' type='checkbox'/>
+							<label for="lock-on-first-connection" data-i18n="Lock on first connection">Фиксировать после первого соединения</label>
+						</div>
+						<div class="mui-checkbox">
+							<input id='is-airport' name='is-airport' type='checkbox'/>
+							<label for="is-airport" data-i18n="Use as AirPort Serial device">Режим AirPort (прозрачный UART)</label>
+						</div>
+						<div class="mui-checkbox">
+							<input id='dji-permanently-armed' name='dji-permanently-armed' type='checkbox'/>
+							<label for="dji-permanently-armed" data-i18n="Permanently arm DJI">Постоянно держать DJI air unit в ARM</label>
+						</div>
+@@end
+						<button id='submit-options' class="mui-btn mui-btn--primary" disabled data-i18n="Save">Сохранить</button>
+						<div id="reset-options" style="display: none;">
+							<a class="mui-btn mui-btn--small mui-btn--danger" data-i18n="Reset runtime options to defaults">Сбросить параметры к значениям прошивки</a>
+						</div>
+						<input type="hidden" id="flash-discriminator" name="flash-discriminator"/>
+						<input type="hidden" id="wifi-ssid" name="wifi-ssid"/>
+						<input type="hidden" id='wifi-password' name='wifi-password'/>
+					</form>
+				</div>
+@@if isTX:
+				<div class="mui-panel">
+					<h2 data-i18n="Import/Export">Импорт/экспорт</h2>
+					<br/>
+					<div>
+						<a href="/config?export" download="models.json" target="_blank" class="mui-btn mui-btn--small mui-btn--dark" data-i18n="Save model configuration file">Сохранить файл конфигурации моделей</a>
+					</div>
+					<div>
+						<button class="mui-btn mui-btn--small mui-btn--primary upload">
+							<label>
+								Загрузить файл конфигурации моделей
+								<input type="file" id="fileselect" name="fileselect[]" />
+							</label>
+						</button>
+					</div>
+				</div>
+@@end
+			</div>
+
+			<div class="mui-tabs__pane" id="pane-justified-2">
+				<div class="mui-panel">
+					<h2 data-i18n="Firmware Update">Обновление прошивки</h2>
+					Выберите правильный файл <strong>firmware.bin@@{ ".gz" if (is8285 and not isTX) else "" }</strong> для @@{PLATFORM}, иначе возможна неудачная прошивка.
+					Тогда восстановление — только через USB/Serial. Можно скачать <a href="firmware.bin" title="Скачать текущую прошивку">текущую прошивку</a>.
+					<br/><br/>
+@@if (is8285 and not isTX):
+					<div class="mui-panel" style="background-color: #fcecae;text-align:center;">Не распаковывайте firmware.bin.gz — загружайте файл как есть.</div>
+					<br/>
+@@end
+					<button id="upload_btn" class="mui-btn mui-btn--primary upload" style="margin: 0 auto; display:block;">
+						<label>
+							Выбрать файл прошивки
+							<input type="file" id="firmware_file" name="update[]" />
+						</label>
+					</button>
+					<div id="filedrag">или перетащите файл прошивки сюда</div>
+					<br/>
+					<h3 id="status"></h3>
+					<progress id="progressBar" value="0" max="100" style="width:100%;"></progress>
+				</div>
+			</div>
+
+@@if isTX:
+			<div class="mui-tabs__pane" id="pane-justified-3">
+				<div class="mui-panel">
+					<h2 data-i18n="Button Actions">Действия кнопок</h2>
+					Укажите действия при коротком и длинном нажатии кнопок модуля.
+					<br/><br/>
+					<form class="mui-form" id='button_actions'>
+						<table class="mui-table">
+							<tbody id="button-actions"></tbody>
+						</table>
+						<div id="button1-color-div" style="display: none;">
+							<input id='button1-color' name='button1-color' type='color'/>
+							<label for="button1-color">Цвет кнопки 1</label>
+						</div>
+						<div id ="button2-color-div" style="display: none;">
+							<input id='button2-color' name='button2-color' type='color'/>
+							<label for="button2-color">Цвет кнопки 2</label>
+						</div>
+						<button id="submit-actions" class="mui-btn mui-btn--primary" data-i18n="Save">Сохранить</button>
+					</form>
+				</div>
+			</div>
+@@end
+@@if not isTX:
+			<div class="mui-tabs__pane" id="pane-justified-3">
+				<div class="mui-panel">
+					<div id="model_tab">
+						<h2 data-i18n="PWM Output">Выходы PWM</h2>
+						Режим выхода PWM и позиция failsafe.
+						<ul>
+							<li><b>Output:</b> Receiver output pin</li>
+							<li><b>Features:</b> If an output is capable of supporting another function, that is indicated here</li>
+							<li><b>Mode:</b> Output frequency, 10KHz 0-100% duty cycle, binary On/Off, DShot, Serial, or I2C (some options are pin dependant)</li>
+							<ul>
+								<li>When enabling serial pins, be sure to select the <b>Serial Protocol</b> below and <b>UART baud</b> on the <b>Options</b> tab</li>
+							</ul>
+							<li><b>Input:</b> Input channel from the handset</li>
+							<li><b>Invert:</b> Invert input channel position</li>
+							<li><b>750us:</b> Use half pulse width (494-1006us) with center 750us instead of 988-2012us</li>
+							<li><b>Failsafe</b>
+								<ul>
+									<li>"Set Position" sets the servo to an absolute "Failsafe Pos"
+										<ul>
+											<li>Does not use "Invert" flag</li>
+											<li>Value will be halved if "750us" flag is set</li>
+											<li>Will be converted to binary for "On/Off" mode (>1500us = HIGH)</li>
+										</ul>
+									</li>
+									<li>"No Pulses" stops sending pulses
+										<ul>
+											<li>Unpowers servos</li>
+											<li>May disarm ESCs</li>
+										</ul>
+									</li>
+									<li>"Last Position" continues sending last received channel position</li>
+								</ul>
+							</li>
+						</ul>
+						<form action="/pwm" id="pwm" method="POST">
+						</form>
+					</div>
+					<form class="mui-form" action='/config' id='config' method='POST'>
+						<h2 data-i18n="Binding Phrase">Фраза привязки</h2>
+						<div class="mui-select">
+							<select id="vbind" name="vbind">
+								<option value="0">Постоянно (по умолчанию) — bind сохраняется после перезагрузки</option>
+								<option value="1">Временно — bind не сохраняется после перезагрузки</option>
+								<option value="2">Возвратный — отвязка возвращает фразу из прошивки</option>
+								<option value="3">Только Web UI — bind можно менять только здесь</option>
+							</select>
+							<label for="vbind">Хранение привязки</label>
+						</div>
+						<div id="bindphrase">
+							Введите новую фразу привязки вместо текущей.
+							Она сохранится после перезагрузки, но <b>сбросится</b>, если прошить с фразой в прошивке.
+							Фраза не запоминается: это временное поле для расчёта UID.
+							<br/><br/>
+							<div class="mui-textfield">
+								<input type="text" id="phrase" name="phrase" placeholder="Фраза привязки" data-i18n-placeholder="Binding Phrase" />
+								<label for="phrase" data-i18n="Binding Phrase">Фраза привязки</label>
+							</div>
+							<div class="mui-textfield">
+								<label for="uid"><span id="uid-text"></span></label>
+								<span class="badge" id="uid-type"></span>
+								<input size="40" id="uid" name="uid" type="text" class="array" readonly/>
+							</div>
+						</div>
+						<div id="serial-config">
+							<h2 data-i18n="Serial Protocol">Последовательный протокол</h2>
+							Протокол связи с полётным контроллером или внешними устройствами.
+							<br/><br/>
+							<div class="mui-select">
+								<select id='serial-protocol' name='serial-protocol'>
+									<option value='0'>CRSF</option>
+									<option value='1'>Inverted CRSF</option>
+									<option value='2'>SBUS</option>
+									<option value='3'>Inverted SBUS</option>
+									<option value='4'>SUMD</option>
+									<option value='5'>DJI RS Pro</option>
+									<option value='6'>HoTT Telemetry</option>
+									<option value='7'>MAVLINK</option>
+									<option value='8'>DisplayPort</option>
+									<option value='9'>GPS</option>
+								</select>
+								<label for='serial-protocol'>Последовательный протокол</label>
+							</div>
+						</div>
+						<div id="serial1-config">
+							<div class="mui-select">
+								<select id='serial1-protocol' name='serial1-protocol'>
+									<option value='0'>Off</option>
+									<option value='1'>CRSF</option>
+									<option value='2'>Inverted CRSF</option>
+									<option value='3'>SBUS</option>
+									<option value='4'>Inverted SBUS</option>
+									<option value='5'>SUMD</option>
+									<option value='6'>DJI RS Pro</option>
+									<option value='7'>HoTT Telemetry</option>
+									<option value='8'>Tramp</option>
+									<option value='9'>SmartAudio</option>
+									<option value='10'>DisplayPort</option>
+									<option value='11'>GPS</option>
+								</select>
+								<label for='serial1-protocol'>Протокол Serial2</label>
+							</div>
+						</div>
+						<div id="sbus-config" style="display: none;">
+							<h2>SBUS Failsafe</h2>
+							Поведение failsafe в протоколе SBUS:<br/>
+							<ul>
+								<li>«Нет импульсов» — прекратить SBUS при потере связи с TX</li>
+								<li>«Последняя позиция» — продолжать слать последние каналы с битом FAILSAFE</li>
+							</ul>
+							<br/>
+							<div class="mui-select">
+								<select id='sbus-failsafe' name='serial-failsafe'>
+									<option value='0'>Нет импульсов</option>
+									<option value='1'>Последняя позиция</option>
+								</select>
+								<label for="sbus-failsafe">SBUS Failsafe</label>
+							</div>
+						</div>
+
+						<h2 data-i18n="Model Match">Совпадение модели</h2>
+						Укажите номер приёмника на странице модели OpenTX/EdgeTX и включите Model Match
+						в Lua-скрипте ExpressLRS для этой модели. Значение от 0 до 63 включительно.
+						<br/><br/>
+						<div class="mui-checkbox">
+							<input id='model-match' name='model-match' type='checkbox'/>
+							<label for="model-match">Включить Model Match</label>
+						</div>
+						<div class="mui-textfield" id="modelNum">
+							<input id='modelid' type='text' name='modelid' value="255" required/>
+							<label for="modelid">ID модели</label>
+						</div>
+						<h2 data-i18n="Force telemetry off">Принудительно выключить телеметрию</h2>
+						Если с одного TX работают несколько RX (больше PWM-выходов), телеметрию может слать только один приёмник.
+						Включите, чтобы игнорировать Telem Ratio на TX и не слать телеметрию с этого RX.
+						<br/><br/>
+						<div class="mui-checkbox">
+							<input id='force-tlm' name='force-tlm' type='checkbox' value="1"/>
+							<label for="force-tlm">Выключить телеметрию на этом приёмнике</label>
+						</div>
+						<button type='submit' class="mui-btn mui-btn--small mui-btn--primary" data-i18n="Save">Сохранить</button>
+					</form>
+				</div>
+				<div class="mui-panel">
+					<a id="reset-model" href="#">Сбросить настройки модели (включая привязку).</a>
+				</div>
+			</div>
+@@end
+
+			<div class="mui-tabs__pane" id="pane-justified-4">
+				<div class="mui-panel">
+					<h2 id="apmode" style="display:none;">Режим точки доступа</h2>
+					<h2 id="stamode" style="display:none;">Текущая домашняя сеть: <span id="ssid"></span></h2>
+					Здесь можно подключиться к домашней сети. Когда Wi‑Fi включится в зоне этой сети,
+					GerdaLRS подключится автоматически. В режиме точки доступа имя сети — <b>GerdaLRS TX</b> или <b>GerdaLRS RX</b>,
+					пароль <b>expresslrs</b>.
+					<br/>
+					<br/>
+					<form id="sethome" method="POST" autocomplete="off" class="mui-form">
+						<div class="mui-radio">
+							<input type="radio" id="nt0" name="networktype" value="0" checked>
+							<label for="nt0">Задать новую домашнюю сеть</label>
+						</div>
+						<div class="mui-radio">
+							<input type="radio" id="nt1" name="networktype" value="1">
+							<label for="nt1">Однократное подключение, сохранить домашнюю сеть</label>
+						</div>
+						<div class="mui-radio">
+							<input type="radio" id="nt2" name="networktype" value="2">
+							<label for="nt2">Запустить точку доступа, сохранить домашнюю сеть</label>
+						</div>
+						<div class="mui-radio">
+							<input type="radio" id="nt3" name="networktype" value="3">
+							<label for="nt3">Забыть домашнюю сеть, всегда точка доступа</label>
+						</div>
+						<br/>
+						<div id="credentials">
+							<div class="autocomplete mui-textfield" style="position:relative;">
+								<div id="loader" style="position:absolute;right:0;width: 28px;height: 28px;" class="loader"></div>
+								<input id="network" type="text" name="network" placeholder="SSID"/>
+								<label for="network">SSID Wi‑Fi</label>
+							</div>
+							<div class="mui-textfield">
+								<input size='64' id='password' name='password' type='password'/>
+								<label for="password">Пароль Wi‑Fi</label>
+							</div>
+						</div>
+						<button type="submit" class="mui-btn mui-btn--primary" data-i18n="Confirm">Подтвердить</button>
+					</form>
+				</div>
+				<div class="mui-panel">
+					<a id="connect" href="#">Подключиться к домашней сети: <span id="homenet"></span></a>
+				</div>
+			</div>
+		</div>
+	</div>
+	@@include("footer-template.html")
+</body>
+<script src="mui.js"></script>
+<script src="scan.js"></script>
+</html>
