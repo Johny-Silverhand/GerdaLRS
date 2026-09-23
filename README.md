@@ -32,7 +32,7 @@
 | MSP / TLM | низкий LQ → MSP defer; Дальность: TLM 1:32/1:64 через SYNC | parity-пакет вместо TLM |
 | FEC | XOR-примитив есть, **не в эфире** (50 Гц TOA) | опциональный parity slot |
 | CUSTOM_2640 | опция есть; **не** дальность | не использовать в range A/B |
-| Бинарники релиза | не публикуются этим PR | после прошивки пары |
+| Бинарники релиза | pre-release **v0.1.0-test** | своя фраза / Configurator Local |
 
 ## Оборудование
 
@@ -85,7 +85,7 @@ Lua на аппаратуре показывает **RM Ranger Nano**. Корп�
 3. **Безопасность** — Secure Link спроектирован и вшит в TX pack / RX unpack за флагом. Default OFF. См. [`docs/SECURITY.ru.md`](docs/SECURITY.ru.md).
 4. **Дальность/скорость** — профили + MSP-priority + dynpower + telem backoff на Дальности. Умный FHSS: гистограмма, hops не ломаем. A/B ~30 км: [`docs/RANGE_EXPERIMENTS.ru.md`](docs/RANGE_EXPERIMENTS.ru.md). Adaptive MCS / synced skip / on-air FEC — дальше. 750/900 — отложено.
 
-Архитектура: [`docs/ARCHITECTURE.ru.md`](docs/ARCHITECTURE.ru.md). Безопасность: [`docs/SECURITY.ru.md`](docs/SECURITY.ru.md). FHSS: [`docs/FHSS.ru.md`](docs/FHSS.ru.md). Эксперименты дальности: [`docs/RANGE_EXPERIMENTS.ru.md`](docs/RANGE_EXPERIMENTS.ru.md).
+Архитектура: [`docs/ARCHITECTURE.ru.md`](docs/ARCHITECTURE.ru.md). Безопасность: [`docs/SECURITY.ru.md`](docs/SECURITY.ru.md). FHSS: [`docs/FHSS.ru.md`](docs/FHSS.ru.md). Эксперименты дальности: [`docs/RANGE_EXPERIMENTS.ru.md`](docs/RANGE_EXPERIMENTS.ru.md). Прошивка: [`docs/FLASH.ru.md`](docs/FLASH.ru.md).
 
 ## Сборка
 
@@ -128,6 +128,8 @@ pio run -e Unified_ESP32C3_LR1121_RX_via_UART
 Не собирайте HappyModel / `Unified_ESP32_2400_RX` (SX128x) для FlyFish.
 
 Бинарник: `src/.pio/build/<env>/firmware.bin`. Wi‑Fi AP: `GerdaLRS RX` / `GerdaLRS TX`, пароль `expresslrs`, `http://10.0.0.1/`. Диапазон 2.4/2640 — вкладка **Опции**.
+
+Готовые образы тестового релиза: [Releases / v0.1.0-test](https://github.com/Johny-Silverhand/GerdaLRS/releases/tag/v0.1.0-test). Как прошивать и про тестовую фразу `gerda-test-changeme`: [`docs/FLASH.ru.md`](docs/FLASH.ru.md). Для полёта **пересоберите со своей фразой**.
 
 ### ExpressLRS Configurator, режим Local
 
@@ -174,7 +176,7 @@ Non-ISM frequencies (including ~2640 MHz) are the operator’s legal responsibil
 - [x] Профили Баланс/Дальность/Скорость в Web UI.
 - [x] Умный FHSS (гистограмма, hops не меняем) + расширенные native-тесты Secure Link.
 - [x] Range pack: TLM backoff, липкий dynpower, XOR FEC-примитив, `docs/RANGE_EXPERIMENTS.ru.md`.
+- [x] Pre-release **v0.1.0-test** + [`docs/FLASH.ru.md`](docs/FLASH.ru.md).
 - [ ] Доперевести длинные help-тексты PWM/Hardware pins.
 - [ ] Снять `hardware.json` с живого FlyFish 9624R.
-- [ ] Прошивка пары на железе (не в этом раунде).
 - [ ] Synced FHSS skip-map, epoch anti-replay, adaptive MCS.

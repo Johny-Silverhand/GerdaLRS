@@ -9,8 +9,12 @@
 
 
 ### BINDING PHRASE: ###
-# Uncomment the line below to use a hardcoded binding phrase
-# Leave commented to use traditional binding
+# Uncomment to bake a UID. Official v0.1.0-test GitHub bins use a *separate*
+# super_defines.txt phrase `gerda-test-changeme` — do NOT treat that as a
+# production secret. Rebuild with your own phrase for a real model:
+#   -DMY_BINDING_PHRASE="ваша_фраза"
+# Leave commented here so git builds default to traditional (button) bind
+# unless you set a phrase yourself.
 #-DMY_BINDING_PHRASE="default ExpressLRS binding phrase"
 
 
@@ -24,8 +28,11 @@
 #-DRegulatory_Domain_EU_433
 #-DRegulatory_Domain_US_433
 #-DRegulatory_Domain_US_433_WIDE
-#-DRegulatory_Domain_FCC_915
-#-DRegulatory_Domain_ISM_2400
+# GerdaLRS v1 pair (Ranger Nano SX1280 TX + LR1121 RX): both defines are required.
+# ISM_2400 is the 2.4 hop set. FCC_915 satisfies the LR1121 dual-band compile
+# #error; 2.4 hops still come from domainsDualBand[] / Web UI gerda-2g4 (ISM default).
+-DRegulatory_Domain_FCC_915
+-DRegulatory_Domain_ISM_2400
 #-DRegulatory_Domain_EU_CE_2400
 
 ### GerdaLRS (optional, off by default) ###

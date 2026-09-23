@@ -146,6 +146,7 @@ Web UI (Wi-Fi AP GerdaLRS RX/TX)
 - [x] Профили Баланс/Дальность/Скорость + MSP defer + dynpower RANGE + TLM backoff.
 - [x] Умный FHSS: гистограмма + soft denylist (hops как у ELRS).
 - [x] XOR FEC-примитив + чеклист дальности (`docs/RANGE_EXPERIMENTS.ru.md`).
+- [x] Pre-release v0.1.0-test + `docs/FLASH.ru.md` (флеш UART/Wi‑Fi/Configurator).
 - [ ] Доперевести длинные help-тексты PWM / Hardware pins.
 - [ ] Снять hardware.json с FlyFish 9624R и сравнить с `Generic C3 LR1121.json`.
 - [ ] Измерить RSSI/дальность на 2640 со штатной антенной (ожидается хуже; не часть range pack).
