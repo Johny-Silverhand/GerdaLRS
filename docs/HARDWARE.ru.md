@@ -15,9 +15,32 @@
 
 ## Чего нет в официальном ExpressLRS
 
-Поиск по `ExpressLRS/ExpressLRS` и `ExpressLRS/targets` (снимок `bda4c92` и более новый master на момент инициализации) **не** находит `FlyFish` / `9624R`.
+Поиск по `ExpressLRS/targets` `master` на 2026-09-11 (`2b90c511e965304e333d99ca5f724dbc8b7c154f`, файл `targets.json` и каталог `RX/`) даёт **ноль** вхождений `FlyFish` и `9624`. В `ExpressLRS/ExpressLRS` на пине `7684347` отдельного layout тоже нет.
 
-Значит, строка `FlyFish 9624R 2.4` пришла из вендорского `product_name` в прошивке продавца, а не из публичного `targets.json`.
+Строка `FlyFish 9624R 2.4` на живом приёмнике — это `product_name` в хвосте прошивки (128 байт после кода), а не отдельный PIO-таргет. Её ставит тот, кто штамповал unified-образ. Публичного `layout_file` именно для 9624R нет.
+
+### Пин-аут, который использует v0.1.1-test
+
+Отдельного layout нет, поэтому RX штампуется как `flyfish.rx_dual.9624r`:
+
+- `product_name`: `FlyFish 9624R 2.4` (та же строка, что в шапке стокового Web UI)
+- `lua_name`: `FlyFish 9624R`
+- `firmware`: `Unified_ESP32C3_LR1121_RX` (compile-time target `UNIFIED_ESP32C3_LR1121_RX`)
+- `layout_file`: `RX/Generic C3 LR1121.json` — тот же файл, что у `generic.rx_dual.c3-plain`
+
+GPIO из этого файла (снимок targets `bda4c92`, без правок):
+
+| Сигнал | GPIO |
+| --- | --- |
+| UART RX / TX | 20 / 21 |
+| SPI MISO / MOSI / SCK | 5 / 4 / 6 |
+| radio busy / dio1 / nss / rst | 3 / 1 / 7 / 2 |
+| RGB LED (GRB) | 8 |
+| кнопка | 9 |
+
+`power_values` `[12,16,19,22]`, `radio_dcdc` true. На upstream master к этому JSON добавлен только `"power_lna_gain": 12`. v0.1.1-test **не** подхватывает эту строку: смещение LBT без дампа платы не меняем.
+
+Это не дамп 9624R1. Если GPIO на плате другие, RF/LED/кнопка могут молчать; ESP32-C3 по Wi‑Fi/UART обычно остаётся живым.
 
 ## Куда собирать
 
@@ -46,6 +69,8 @@ Layout `Generic C3 LR1121.json` (снимок bda4c92): UART 20/21, SPI 4/5/6, r
 
 ### Алиас GerdaLRS (имя как на устройстве)
 
+v0.1.1-test прошивает **этот** путь, не отдельный generic-бин:
+
 ```
 flyfish.rx_dual.9624r
   product_name : FlyFish 9624R 2.4
@@ -54,7 +79,7 @@ flyfish.rx_dual.9624r
   layout_file  : Generic C3 LR1121.json   # тот же файл, что у generic
 ```
 
-**Риск:** пин-аут не верифицирован. Прошивка алиаса не должна «кирпичить» ESP32-C3 (Wi‑Fi/UART boot обычно живы), но RF может молчать. Снимите конфиг с рабочего RX: Web UI → Hardware → экспорт JSON, сравните с `src/hardware/RX/Generic C3 LR1121.json`.
+**Риск:** пин-аут не снят с живой платы. Прошивка не должна «кирпичить» ESP32-C3 (Wi‑Fi/UART boot обычно живы), но RF может молчать. Снимите конфиг с рабочего RX: Web UI → Hardware → экспорт JSON, сравните с `src/hardware/RX/Generic C3 LR1121.json`.
 
 Похожий серийный продукт с тем же layout/firmware: `radiomaster.rx_dual.xr2` (RadioMaster XR2 2G4 RX). Это **не** доказательство совместимости FlyFish.
 

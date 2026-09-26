@@ -181,6 +181,19 @@ if fnmatch.filter(build_flags, '*Regulatory_Domain_ISM_2400*') and \
         target_name != "NATIVE":
     build_flags = [f for f in build_flags if "Regulatory_Domain_ISM_2400" not in f]
 
+# GerdaLRS factory defaults in the options JSON trailer.
+# Do not invent a uid: RxConfig::CheckUpdateFlashedUid returns immediately when
+# firmwareOptions.hasUID is false, which is exactly the case when "uid" is absent.
+# That is what keeps a persistent RX bind across a Wi-Fi flash.
+if 'uid' in json_flags:
+    sys.stdout.write("\u001b[33mGerdaLRS: MY_BINDING_PHRASE is set; RX will copy this UID over NVS on boot\n")
+else:
+    sys.stdout.write("\u001b[32mGerdaLRS: no binding phrase; RX NVS UID will be left untouched\n")
+json_flags.setdefault('gerda-2g4', 0)       # 0 = ISM 2.4, 1 = CUSTOM_2640
+json_flags.setdefault('gerda-secure', 0)
+json_flags.setdefault('gerda-fhss', 0)
+json_flags.setdefault('gerda-profile', 0)
+
 env['OPTIONS_JSON'] = json_flags
 env['BUILD_FLAGS'] = build_flags
 sys.stdout.write("\nbuild flags: %s\n\n" % build_flags)

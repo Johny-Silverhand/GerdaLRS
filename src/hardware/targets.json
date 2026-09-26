@@ -1740,7 +1740,7 @@
         }
     },
     "flyfish": {
-        "name": "FlyFish (GerdaLRS unverified alias)",
+        "name": "FlyFish (layout Generic C3 LR1121, no upstream 9624R pinout)",
         "rx_dual": {
             "9624r": {
                 "product_name": "FlyFish 9624R 2.4",
