@@ -9,12 +9,11 @@
 
 
 ### BINDING PHRASE: ###
-# Uncomment to bake a UID. Official v0.1.0-test GitHub bins use a *separate*
-# super_defines.txt phrase `gerda-test-changeme` — do NOT treat that as a
-# production secret. Rebuild with your own phrase for a real model:
+# Leave this commented. v0.1.1-test GitHub bins are built with no phrase so a
+# Wi-Fi flash does not overwrite a persistent RX UID (hasUID stays false).
+# Set a phrase here only for a private rebuild that should adopt that UID:
 #   -DMY_BINDING_PHRASE="ваша_фраза"
-# Leave commented here so git builds default to traditional (button) bind
-# unless you set a phrase yourself.
+# v0.1.0-test bins baked `gerda-test-changeme` and reset the bind. Do not reuse them.
 #-DMY_BINDING_PHRASE="default ExpressLRS binding phrase"
 
 

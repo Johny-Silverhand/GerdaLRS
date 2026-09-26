@@ -8,3 +8,10 @@ Upstream commit (targets repo, 2025-04-24, matching ExpressLRS 768434 era):
 Do not treat this snapshot as an official ExpressLRS Configurator
 release channel. New vendor targets after this date are not included
 unless we bump the snapshot.
+
+Rechecked 2026-09-26 against ExpressLRS/targets master
+2b90c511e965304e333d99ca5f724dbc8b7c154f (2026-09-11): still no FlyFish
+and no 9624R string. Generic C3 LR1121.json matches this snapshot except
+upstream added "power_lna_gain": 12. v0.1.1-test keeps the vendored
+layout (no LNA-gain change) and stamps product name "FlyFish 9624R 2.4"
+via flyfish.rx_dual.9624r.

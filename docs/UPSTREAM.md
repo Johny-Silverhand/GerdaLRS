@@ -14,6 +14,11 @@ stock 2.4 / LR1121 hopping remains ISM 2400–2479 MHz. GerdaLRS adds a runtime
 CUSTOM_2640 hop table selected via Web UI `gerda-2g4` (see `docs/ARCHITECTURE.ru.md`).
 Default remains ISM 2.4.
 
+FlyFish 9624R was rechecked against ExpressLRS/targets `master`
+`2b90c511e965304e333d99ca5f724dbc8b7c154f` (2026-09-11). There is still no
+FlyFish / 9624R target or layout. v0.1.1-test stamps
+`flyfish.rx_dual.9624r` onto `RX/Generic C3 LR1121.json`.
+
 To inspect the exact upstream commit on GitHub:
 
 ```text
