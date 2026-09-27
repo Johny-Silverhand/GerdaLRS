@@ -97,6 +97,7 @@ void saveOptions(Stream &stream, bool customised)
     doc["is-airport"] = firmwareOptions.is_airport;
     doc["domain"] = firmwareOptions.domain;
     doc["gerda-2g4"] = gerda_2g4_band_index();
+    doc["gerda-band"] = gerda_band;
     doc["gerda-secure"] = gerda_secure_link ? 1 : 0;
     doc["gerda-fhss"] = gerda_smart_fhss ? 1 : 0;
     doc["gerda-profile"] = (gerda_profile == GERDA_PROFILE_RANGE || gerda_profile == GERDA_PROFILE_SPEED)
@@ -213,9 +214,23 @@ static void options_LoadFromFlashOrFile(EspFlashStream &strmFlash)
     firmwareOptions.lock_on_first_connection = doc["lock-on-first-connection"] | true;
     firmwareOptions.dji_permanently_armed = doc["dji-permanently-armed"] | false;
     #endif
-    firmwareOptions.domain = doc["domain"] | 0;
-    if (!doc["gerda-2g4"].isNull()) {
-        gerda_2g4_band = (doc["gerda-2g4"].as<int>() == 1) ? 1 : 0;
+    {
+        gerda_band_opts_t bandIn;
+        bandIn.domain = (uint8_t)(doc["domain"] | 0);
+        bandIn.gerda_2g4 = gerda_2g4_band;
+        if (!doc["gerda-2g4"].isNull()) {
+            bandIn.gerda_2g4 = (doc["gerda-2g4"].as<int>() == 1) ? 1 : 0;
+        }
+        bandIn.has_gerda_band = doc["gerda-band"].isNull() ? 0 : 1;
+        int rawBand = bandIn.has_gerda_band ? doc["gerda-band"].as<int>() : 0;
+        bandIn.gerda_band = (rawBand < 0 || rawBand > 255) ? 0 : (uint8_t)rawBand;
+        uint8_t domain = 0;
+        uint8_t g2 = 0;
+        uint8_t selected = GERDA_BAND_ISM24;
+        gerda_band_import(&bandIn, &domain, &g2, &selected);
+        firmwareOptions.domain = domain;
+        gerda_2g4_band = g2;
+        gerda_band = selected;
     }
     if (!doc["gerda-secure"].isNull()) {
         if (doc["gerda-secure"].is<bool>()) {
@@ -250,6 +265,7 @@ void options_SetTrueDefaults()
     // The Regulatory Domain is retained, as there is no sensible default
     doc["domain"] = firmwareOptions.domain;
     doc["gerda-2g4"] = gerda_2g4_band_index();
+    doc["gerda-band"] = gerda_band;
     doc["gerda-secure"] = gerda_secure_link ? 1 : 0;
     doc["gerda-fhss"] = gerda_smart_fhss ? 1 : 0;
     doc["gerda-profile"] = (gerda_profile == GERDA_PROFILE_RANGE || gerda_profile == GERDA_PROFILE_SPEED)

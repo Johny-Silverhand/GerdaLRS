@@ -23,7 +23,32 @@ function onReady() {
     initFiledrag();
   }
 
+  loadHeader();
   loadData();
+}
+
+function loadHeader() {
+  const xhr = new XMLHttpRequest();
+  xhr.onreadystatechange = function() {
+    if (this.readyState === 4 && this.status === 200) {
+      const data = JSON.parse(this.responseText);
+      const cfg = data.config || {};
+      const opt = data.options || {};
+      if (_('product_name') && cfg.product_name) _('product_name').textContent = cfg.product_name;
+      if (_('link_state')) _('link_state').textContent = cfg.link_state || 'Wi‑Fi';
+      if (_('reg_domain')) {
+        const id = (opt['gerda-band'] !== undefined && opt['gerda-band'] !== null) ? Number(opt['gerda-band']) : (Number(opt['gerda-2g4']) === 1 ? 30 : 0);
+        const sub = ['AU 915', 'FCC 915', 'EU 868', 'IN 866', 'AU 433', 'EU 433', 'US 433', 'US 433 Wide'];
+        let title = 'ISM 2.4';
+        if (id === 30) title = 'CUSTOM_2640';
+        else if (id >= 10 && id <= 17) title = sub[id - 10];
+        else if (id >= 20 && id <= 27) title = 'Dual ' + sub[id - 20] + ' + ISM 2.4';
+        _('reg_domain').textContent = title;
+      }
+    }
+  };
+  xhr.open('GET', '/config', true);
+  xhr.send();
 }
 
 function loadData() {

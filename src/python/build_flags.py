@@ -190,6 +190,7 @@ if 'uid' in json_flags:
 else:
     sys.stdout.write("\u001b[32mGerdaLRS: no binding phrase; RX NVS UID will be left untouched\n")
 json_flags.setdefault('gerda-2g4', 0)       # 0 = ISM 2.4, 1 = CUSTOM_2640
+json_flags.setdefault('gerda-band', 0)      # 0 = ISM 2.4; does not promote domain index
 json_flags.setdefault('gerda-secure', 0)
 json_flags.setdefault('gerda-fhss', 0)
 json_flags.setdefault('gerda-profile', 0)

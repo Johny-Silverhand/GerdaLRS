@@ -28,6 +28,8 @@
 - `firmware`: `Unified_ESP32C3_LR1121_RX` (compile-time target `UNIFIED_ESP32C3_LR1121_RX`)
 - `layout_file`: `RX/Generic C3 LR1121.json` — тот же файл, что у `generic.rx_dual.c3-plain`
 
+v0.1.2 не меняет этот layout. Если статусный LED на живой 9624R тёмный, пины правятся в Web UI: страница **Пины: LED / NSS** (`/hardware.html`), поля `led_rgb` (заводской GPIO 8, WS2812), `led` / `led_red` (обычный светодиод) и `radio_nss` (заводской GPIO 7). Сохранение пишет `/hardware.json` на устройство и просит перезагрузку. Заводской файл `Generic C3 LR1121.json` в прошивке тот же.
+
 GPIO из этого файла (снимок targets `bda4c92`, без правок):
 
 | Сигнал | GPIO |
