@@ -7,6 +7,7 @@
 #include "gerda_link.h"
 #include "gerda_fhss.h"
 #include "gerda_fec.h"
+#include "gerda_domain.h"
 #include "common.h"
 
 static void bytes_from_hex(const char *hex, uint8_t *out, size_t n)
@@ -423,6 +424,114 @@ void test_smart_fhss_histogram_and_diversity(void)
     gerda_fhss_reset(0, 0);
 }
 
+static const uint32_t kSubStart[8] = {
+    915500000u, 903500000u, 865275000u, 865375000u,
+    433420000u, 433100000u, 433250000u, 423500000u
+};
+static const uint16_t kSubCount[8] = {20, 40, 13, 4, 3, 3, 8, 20};
+
+void test_domain_catalog_and_default_ism(void)
+{
+    unsigned n = 0;
+    const gerda_band_info_t *cat = gerda_band_catalog(&n);
+    TEST_ASSERT_EQUAL_UINT(19, n);
+    TEST_ASSERT_NOT_NULL(cat);
+    const gerda_band_info_t *ism = gerda_band_info(GERDA_BAND_ISM24);
+    TEST_ASSERT_NOT_NULL(ism);
+    TEST_ASSERT_EQUAL_UINT8(1, ism->runtime_ok);
+    TEST_ASSERT_EQUAL_UINT32(2400400000u, ism->freq_start_hz);
+    TEST_ASSERT_EQUAL_UINT32(2479400000u, ism->freq_stop_hz);
+    TEST_ASSERT_EQUAL_UINT16(80, ism->freq_count);
+    TEST_ASSERT_EQUAL_STRING("ISM2G4", gerda_band_code(GERDA_BAND_ISM24));
+
+    gerda_band_opts_t legacy = {1, 0, 0, 0}; // v0.1.1: domain FCC915, no gerda-band
+    uint8_t domain = 9, g2 = 9, selected = 9;
+    gerda_band_import(&legacy, &domain, &g2, &selected);
+    TEST_ASSERT_EQUAL_UINT8(GERDA_BAND_ISM24, selected);
+    TEST_ASSERT_EQUAL_UINT8(1, domain); // sub-GHz index kept, not promoted to the active band
+    TEST_ASSERT_EQUAL_UINT8(0, g2);
+}
+
+void test_domain_ce_lbt_does_not_change_hops(void)
+{
+    const gerda_band_info_t *ce = gerda_band_info(GERDA_BAND_CE_LBT);
+    TEST_ASSERT_NOT_NULL(ce);
+    TEST_ASSERT_EQUAL_UINT8(0, ce->runtime_ok);
+    TEST_ASSERT_EQUAL_UINT8(1, ce->sx1280_choice);
+    TEST_ASSERT_EQUAL_UINT32(2400400000u, ce->freq_start_hz);
+    uint8_t domain = 1, g2 = 0;
+    TEST_ASSERT_FALSE(gerda_band_select(GERDA_BAND_CE_LBT, &domain, &g2));
+    TEST_ASSERT_EQUAL_UINT8(1, domain);
+    TEST_ASSERT_EQUAL_UINT8(0, g2);
+    gerda_band_opts_t out;
+    TEST_ASSERT_FALSE(gerda_band_export(GERDA_BAND_CE_LBT, 1, &out));
+    TEST_ASSERT_FALSE(gerda_band_select(99, &domain, &g2));
+}
+
+void test_domain_subghz_dual_and_2640_persist(void)
+{
+    for (uint8_t i = 0; i < 8; i++) {
+        const gerda_band_info_t *sub = gerda_band_info((uint8_t)(GERDA_BAND_SUBGHZ_BASE + i));
+        const gerda_band_info_t *dual = gerda_band_info((uint8_t)(GERDA_BAND_DUAL_BASE + i));
+        TEST_ASSERT_NOT_NULL(sub);
+        TEST_ASSERT_NOT_NULL(dual);
+        TEST_ASSERT_EQUAL_UINT8(0, sub->sx1280_choice);
+        TEST_ASSERT_EQUAL_UINT8(0, dual->sx1280_choice);
+        TEST_ASSERT_EQUAL_UINT8(1, sub->runtime_ok);
+        TEST_ASSERT_EQUAL_UINT32(kSubStart[i], sub->freq_start_hz);
+        TEST_ASSERT_EQUAL_UINT16(kSubCount[i], sub->freq_count);
+        TEST_ASSERT_EQUAL_UINT32(kSubStart[i], dual->freq_start_hz);
+        TEST_ASSERT_EQUAL_UINT32(2400400000u, dual->hz_24_start);
+        TEST_ASSERT_EQUAL_UINT8(GERDA_KIND_DUAL, dual->kind);
+
+        gerda_band_opts_t stored;
+        TEST_ASSERT_TRUE(gerda_band_export((uint8_t)(10 + i), 3, &stored));
+        TEST_ASSERT_EQUAL_UINT8(i, stored.domain);
+        TEST_ASSERT_EQUAL_UINT8(0, stored.gerda_2g4);
+        TEST_ASSERT_EQUAL_UINT8(1, stored.has_gerda_band);
+        uint8_t domain = 0, g2 = 1, selected = 0;
+        gerda_band_import(&stored, &domain, &g2, &selected);
+        TEST_ASSERT_EQUAL_UINT8(i, domain);
+        TEST_ASSERT_EQUAL_UINT8(0, g2);
+        TEST_ASSERT_EQUAL_UINT8((uint8_t)(10 + i), selected);
+
+        TEST_ASSERT_TRUE(gerda_band_export((uint8_t)(20 + i), 0, &stored));
+        gerda_band_import(&stored, &domain, &g2, &selected);
+        TEST_ASSERT_EQUAL_UINT8(i, domain);
+        TEST_ASSERT_EQUAL_UINT8(0, g2);
+        TEST_ASSERT_EQUAL_UINT8((uint8_t)(20 + i), selected);
+        TEST_ASSERT_EQUAL_UINT32(2400400000u, gerda_band_info(selected)->hz_24_start);
+    }
+
+    gerda_band_opts_t band2640;
+    TEST_ASSERT_TRUE(gerda_band_export(GERDA_BAND_CUST2640, 1, &band2640));
+    TEST_ASSERT_EQUAL_UINT8(1, band2640.domain);
+    TEST_ASSERT_EQUAL_UINT8(1, band2640.gerda_2g4);
+    uint8_t domain = 0, g2 = 0, selected = 0;
+    gerda_band_import(&band2640, &domain, &g2, &selected);
+    TEST_ASSERT_EQUAL_UINT8(GERDA_BAND_CUST2640, selected);
+    TEST_ASSERT_EQUAL_UINT8(1, g2);
+    TEST_ASSERT_EQUAL_UINT8(1, domain);
+    TEST_ASSERT_EQUAL_UINT32(2600400000u, gerda_band_info(selected)->freq_start_hz);
+    TEST_ASSERT_EQUAL_UINT32(2679400000u, gerda_band_info(selected)->freq_stop_hz);
+
+    // Explicit ISM keeps the stored 900 index and clears 2640.
+    gerda_band_opts_t ism;
+    TEST_ASSERT_TRUE(gerda_band_export(GERDA_BAND_ISM24, 1, &ism));
+    TEST_ASSERT_EQUAL_UINT8(1, ism.domain);
+    TEST_ASSERT_EQUAL_UINT8(0, ism.gerda_2g4);
+    TEST_ASSERT_EQUAL_UINT8(GERDA_BAND_ISM24, ism.gerda_band);
+    gerda_band_import(&ism, &domain, &g2, &selected);
+    TEST_ASSERT_EQUAL_UINT8(GERDA_BAND_ISM24, selected);
+    TEST_ASSERT_EQUAL_UINT8(0, g2);
+    TEST_ASSERT_EQUAL_UINT8(1, domain);
+
+    gerda_band_opts_t legacy2640 = {1, 1, 0, 0};
+    gerda_band_import(&legacy2640, &domain, &g2, &selected);
+    TEST_ASSERT_EQUAL_UINT8(GERDA_BAND_CUST2640, selected);
+    TEST_ASSERT_EQUAL_UINT8(1, g2);
+}
+
 int main(int argc, char **argv)
 {
     UNITY_BEGIN();
@@ -442,5 +551,8 @@ int main(int argc, char **argv)
     RUN_TEST(test_tlm_backoff_range_hysteresis);
     RUN_TEST(test_xor_fec_recover_and_window);
     RUN_TEST(test_smart_fhss_histogram_and_diversity);
+    RUN_TEST(test_domain_catalog_and_default_ism);
+    RUN_TEST(test_domain_ce_lbt_does_not_change_hops);
+    RUN_TEST(test_domain_subghz_dual_and_2640_persist);
     return UNITY_END();
 }

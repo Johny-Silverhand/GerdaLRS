@@ -1,4 +1,4 @@
-@@require(PLATFORM, isTX, is8285)
+@@require(PLATFORM, isTX, is8285, chip)
 @@include("i18n-ru.js")
 
 /* eslint-disable comma-dangle */
@@ -344,17 +344,71 @@ function updateUIDType(uidtype) {
   _('uid-text').textContent = desc;
 }
 
-function updateConfig(data, options) {
-  if (data.product_name) _('product_name').textContent = data.product_name;
-  if (data.reg_domain) _('reg_domain').textContent = data.reg_domain;
-  if (options && options['gerda-2g4'] !== undefined && _('reg_domain')) {
-    const band = (Number(options['gerda-2g4']) === 1) ? 'CUST2640' : 'ISM2G4';
-    if (data.reg_domain && data.reg_domain !== band) {
-      _('reg_domain').textContent = data.reg_domain + ' / ' + band;
+function gerdaBandTitle(id) {
+  const n = Number(id);
+  const sub = ['AU 915', 'FCC 915', 'EU 868', 'IN 866', 'AU 433', 'EU 433', 'US 433', 'US 433 Wide'];
+  if (n === 30) return 'CUSTOM_2640';
+  if (n === 1) return 'CE/EU LBT 2.4';
+  if (n >= 10 && n <= 17) return sub[n - 10];
+  if (n >= 20 && n <= 27) return 'Dual ' + sub[n - 20] + ' + ISM 2.4';
+  return 'ISM 2.4';
+}
+
+function gerdaBandIdFromOptions(options) {
+  if (options && options['gerda-band'] !== undefined && options['gerda-band'] !== null && options['gerda-band'] !== '') {
+    return Number(options['gerda-band']);
+  }
+  if (options && Number(options['gerda-2g4']) === 1) return 30;
+  return 0;
+}
+
+function syncGerdaBandUi(fromUser) {
+  const sel = _('gerda-band');
+  if (!sel) return;
+  let n = Number(sel.value);
+  const warn = _('gerda-band-warn');
+  if (n === 1 || Number.isNaN(n)) {
+    if (warn) {
+      warn.textContent = 'CE/EU LBT 2.4 использует те же частоты, что ISM 2.4 (2400.4–2479.4 МГц). Listen-Before-Talk в этой прошивке включается только флагом сборки Regulatory_Domain_EU_CE_2400 и не собирается вместе с LR1121. Выбор не меняет hop-таблицу.';
+    }
+    if (fromUser) {
+      sel.value = (_('gerda-2g4') && _('gerda-2g4').value === '1') ? '30' : '0';
+      n = Number(sel.value);
     } else {
-      _('reg_domain').textContent = band;
+      return;
     }
   }
+  const domainEl = _('domain');
+  const g2 = _('gerda-2g4');
+  if (n >= 10 && n <= 17) {
+    if (domainEl) domainEl.value = String(n - 10);
+    if (g2) g2.value = '0';
+    if (warn) warn.textContent = 'Sub-GHz выбран. Hop-таблица 900/433 применится, когда packet rate будет режимом 900 или 433. RadioMaster Ranger Nano (SX1280) так не умеет — нужен LR1121 TX с тем же доменом, антенна и RF-путь платы. Соблюдайте местные правила частот. Сохраните и перезагрузите.';
+  } else if (n >= 20 && n <= 27) {
+    if (domainEl) domainEl.value = String(n - 20);
+    if (g2) g2.value = '0';
+    if (warn) warn.textContent = 'Dual-band: нижняя полоса — выбранный sub-GHz домен, верхняя — ISM 2.4. В эфире это packet rate D150 или D100 Full на LR1121 TX. Ranger Nano (только 2.4) dual не передаёт. Нужны обе антенны/RF-пути, если плата их разводит. Частоты — по закону вашей страны. Сохраните и перезагрузите.';
+  } else if (n === 30) {
+    if (g2) g2.value = '1';
+    if (warn) warn.textContent = 'CUSTOM_2640 (~2600.4–2679.4 МГц) — не ISM. Оба конца должны быть на 2640, иначе связи не будет. Фронтенд 2.4 обычно согласован на 2.4–2.5 ГГц, дальность падает. По умолчанию выключено. Сохраните и перезагрузите.';
+  } else {
+    if (g2) g2.value = '0';
+    if (warn) warn.textContent = 'ISM 2.4 (2400.4–2479.4 МГц) — значение по умолчанию, его понимает Ranger Nano. Sub-GHz индекс в конфиге не становится активным диапазоном, пока вы явно не выберете 900/433 или dual. TX и RX должны совпадать.';
+  }
+}
+
+function updateConfig(data, options) {
+  if (data.product_name && _('product_name')) _('product_name').textContent = data.product_name;
+  if (_('reg_domain')) {
+    const title = gerdaBandTitle(gerdaBandIdFromOptions(options));
+    const air = data.reg_domain || '';
+    const same = !air
+      || (title.indexOf('2640') >= 0 && air.indexOf('2640') >= 0)
+      || (title.indexOf('ISM 2.4') === 0 && air.indexOf('ISM') >= 0)
+      || title.indexOf(air) >= 0;
+    _('reg_domain').textContent = same || !air ? title : (title + ' · эфир ' + air);
+  }
+  if (_('link_state')) _('link_state').textContent = data.link_state || 'Wi‑Fi';
   if (data.uid) {
     _('uid').value = data.uid.toString();
     originalUID = data.uid;
@@ -855,6 +909,9 @@ function submitOptions(e) {
 }
 
 _('submit-options').addEventListener('click', submitOptions);
+if (_('gerda-band')) {
+  _('gerda-band').addEventListener('change', () => syncGerdaBandUi(true));
+}
 
 @@if isTX:
 function submitButtonActions(e) {
@@ -931,6 +988,10 @@ function updateOptions(data) {
   if (data['wifi-ssid']) _('homenet').textContent = data['wifi-ssid'];
   else _('connect').style.display = 'none';
   if (data['customised']) _('reset-options').style.display = 'block';
+  if (_('gerda-band') && (data['gerda-band'] === undefined || data['gerda-band'] === null)) {
+    _('gerda-band').value = (Number(data['gerda-2g4']) === 1) ? '30' : '0';
+  }
+  syncGerdaBandUi(false);
   _('submit-options').disabled = false;
 }
 

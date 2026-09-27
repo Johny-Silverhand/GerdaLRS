@@ -1,0 +1,23 @@
+@@require(PLATFORM, VERSION)
+<header class="gerda-top">
+	<div class="gerda-brand">
+		@@include("logo-template.svg")
+		<div class="gerda-brand-text">
+			<p class="gerda-kicker">GerdaLRS</p>
+			<h1>Герда</h1>
+			<p class="gerda-product" id="product_name"></p>
+		</div>
+	</div>
+	<div class="gerda-status" aria-label="Состояние">
+		<div class="gerda-chip"><span>Прошивка</span><b>@@{VERSION}</b></div>
+		<div class="gerda-chip"><span>Таргет</span><b>@@{PLATFORM}</b></div>
+		<div class="gerda-chip"><span>Диапазон</span><b id="reg_domain">ISM 2.4</b></div>
+		<div class="gerda-chip"><span>Линк</span><b id="link_state">Wi‑Fi</b></div>
+	</div>
+</header>
+<nav class="gerda-nav">
+	<a href="/">Главная</a>
+	<a href="/hardware.html">Пины: LED / NSS</a>
+	<a href="/cw.html">CW</a>
+	<a href="/lr1121.html">LR1121</a>
+</nav>

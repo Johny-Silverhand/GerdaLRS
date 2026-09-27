@@ -10,13 +10,7 @@
 </head>
 
 <body>
-	<header class="mui-appbar mui--z1 mui--text-center elrs-header">
-		@@include("logo-template.svg")
-		<h1><b>Герда</b> / GerdaLRS</h1>
-		<span id="product_name"></span><br/>
-		<b data-i18n="Firmware Rev. ">Ревизия прошивки </b>@@{VERSION} <span id="reg_domain"></span>
-	</header>
-	<br/>
+	@@include("gerda-header.html")
 	<div class="mui-container-fluid">
 		<div class="mui-panel mui-col-sm-10 mui-col-sm-offset-1">
 
@@ -53,7 +47,7 @@
 					<br/><br/>
 					<form id='upload_options' method='POST' action="/options">
 @@end
-@@if hasSubGHz:
+@@if chip == 'SX127X':
 						<div class="mui-select">
 							<select id='domain' name='domain'>
 								<option value='0'>AU915</option>
@@ -67,21 +61,49 @@
 							</select>
 							<label for="domain" data-i18n="Regulatory domain">Регуляторный домен (900 МГц)</label>
 						</div>
+@@else:
+						<div class="gerda-band-card">
+							<label for="gerda-band">Диапазон / regulatory domain</label>
+							<select id="gerda-band" name="gerda-band" class="gerda-band-select">
+								<optgroup label="2.4 ГГц">
+									<option value="0">ISM 2.4 — 2400.4–2479.4 МГц (по умолчанию)</option>
+									<option value="1" disabled>CE/EU LBT 2.4 — те же частоты, LBT только при сборке</option>
+									<option value="30">CUSTOM_2640 — 2600.4–2679.4 МГц (выкл, не ISM)</option>
+								</optgroup>
+@@if hasSubGHz:
+								<optgroup label="Sub-GHz — нужен LR1121 TX, не Ranger Nano">
+									<option value="10">AU 915 — 915.5–926.9 МГц</option>
+									<option value="11">FCC 915 — 903.5–926.9 МГц</option>
+									<option value="12">EU 868 — 865.275–869.575 МГц</option>
+									<option value="13">IN 866 — 865.375–866.95 МГц</option>
+									<option value="14">AU 433 — 433.42–434.42 МГц</option>
+									<option value="15">EU 433 — 433.1–434.45 МГц</option>
+									<option value="16">US 433 — 433.25–438 МГц</option>
+									<option value="17">US 433 Wide — 423.5–438 МГц</option>
+								</optgroup>
+								<optgroup label="Dual-band: sub-GHz + ISM 2.4 (packet rate D150 / D100)">
+									<option value="20">Dual AU 915 + ISM 2.4</option>
+									<option value="21">Dual FCC 915 + ISM 2.4</option>
+									<option value="22">Dual EU 868 + ISM 2.4</option>
+									<option value="23">Dual IN 866 + ISM 2.4</option>
+									<option value="24">Dual AU 433 + ISM 2.4</option>
+									<option value="25">Dual EU 433 + ISM 2.4</option>
+									<option value="26">Dual US 433 + ISM 2.4</option>
+									<option value="27">Dual US 433 Wide + ISM 2.4</option>
+								</optgroup>
 @@end
-@@if chip != 'SX127X':
-						<div class="mui-select">
-							<select id="gerda-2g4" name="gerda-2g4">
-								<option value="0" data-i18n="ISM 2.4 GHz">ISM 2.4 ГГц (2400–2480)</option>
-								<option value="1" data-i18n="CUSTOM_2640">CUSTOM_2640 (~2640 МГц, не ISM)</option>
 							</select>
-							<label for="gerda-2g4" data-i18n="2.4 / 2640 band">Диапазон 2.4 / 2640</label>
+							<input type="hidden" id="domain" name="domain" value="0"/>
+							<input type="hidden" id="gerda-2g4" name="gerda-2g4" value="0"/>
+							<p id="gerda-band-warn" class="gerda-warn">
+								По умолчанию ISM 2.4. TX и RX должны быть на одном диапазоне.
+								Sub-GHz и dual на LR1121 включаются, когда packet rate — режим 900/433 или D150/D100.
+								RadioMaster Ranger Nano — SX1280, только 2.4 ГГц: на 868/915/433 он не передаёт.
+								Нужны антенна и RF-путь платы под выбранную полосу. Частоты — по правилам вашей страны.
+								CE/EU LBT не переключается в рантайме: это те же частоты, что ISM, а Listen-Before-Talk задаётся при сборке и с LR1121 в этой прошивке не собирается.
+								CUSTOM_2640 не ISM и по умолчанию выключен.
+							</p>
 						</div>
-						<p style="font-size:13px;line-height:1.4;">
-							Оба конца линка (TX и RX) должны использовать один и тот же диапазон, иначе связи не будет.
-							CUSTOM_2640 — <b>не ISM</b>: лицензии и закон — ваша ответственность.
-							Фронтенд 2.4 ГГц (FlyFish 9624R, Ranger Nano) согласован примерно на 2.4–2.5 ГГц; на ~2640 МГц дальность обычно падает.
-							После сохранения нужна перезагрузка.
-						</p>
 @@end
 						<div class="mui-checkbox">
 							<input id="gerda-secure" name="gerda-secure" type="checkbox"/>

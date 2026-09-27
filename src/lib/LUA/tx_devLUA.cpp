@@ -6,6 +6,7 @@
 #include "OTA.h"
 #include "FHSS.h"
 #include "helpers.h"
+#include "gerda_domain.h"
 
 #define STR_LUA_ALLAUX         "AUX1;AUX2;AUX3;AUX4;AUX5;AUX6;AUX7;AUX8;AUX9;AUX10"
 
@@ -908,7 +909,7 @@ static void registerLuaParameters()
     strlcpy(version_domain, version, 18);
     strlcat(version_domain, "... ", sizeof(version_domain));
   }
-  strlcat(version_domain, FHSSconfig->domain, sizeof(version_domain));
+  strlcat(version_domain, gerda_band_code(gerda_band), sizeof(version_domain));
   registerLUAParameter(&luaELRSversion);
 }
 

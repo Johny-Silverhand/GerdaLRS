@@ -295,6 +295,23 @@ static const char *GetConfigUidType(const JsonObject json)
 #endif
 }
 
+static const char *ConnectionStateString()
+{
+  switch (connectionState)
+  {
+  case connected: return "Связь";
+  case tentative: return "Захват";
+  case awaitingModelId: return "Model Match";
+  case disconnected: return "Нет связи";
+  case wifiUpdate: return "Wi‑Fi";
+  case serialUpdate: return "USB";
+  case bleJoystick: return "BLE";
+  case radioFailed: return "Радио";
+  case hardwareUndefined: return "Нет пинов";
+  default: return "—";
+  }
+}
+
 static void GetConfiguration(AsyncWebServerRequest *request)
 {
   bool exportMode = request->hasArg("export");
@@ -399,6 +416,7 @@ static void GetConfiguration(AsyncWebServerRequest *request)
     json["config"]["product_name"] = product_name;
     json["config"]["lua_name"] = device_name;
     json["config"]["reg_domain"] = FHSSgetRegulatoryDomain();
+    json["config"]["link_state"] = ConnectionStateString();
     json["config"]["uidtype"] = GetConfigUidType(json);
 
     json["gerda"]["profile"] = gerda_profile;
